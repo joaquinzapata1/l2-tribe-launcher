@@ -6,7 +6,7 @@ namespace L2InterludeUpdater;
 internal sealed class GitHubReleaseClient : IDisposable
 {
     public const string LatestReleaseApi =
-        "https://api.github.com/repos/joaquinzapata1/l2classic-interlude-custom/releases/latest";
+        "https://api.github.com/repos/joaquinzapata1/l2-client-updater/releases/latest";
 
     private readonly HttpClient _httpClient = new();
 
@@ -64,7 +64,7 @@ internal sealed class GitHubReleaseClient : IDisposable
     public async Task<ContentReleaseInfo> GetLatestContentAsync(CancellationToken cancellationToken)
     {
         const string releasesUrl =
-            "https://api.github.com/repos/joaquinzapata1/l2classic-interlude-custom/releases?per_page=30";
+            "https://api.github.com/repos/joaquinzapata1/l2-client-updater/releases?per_page=30";
         using var response = await _httpClient.GetAsync(releasesUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
 
