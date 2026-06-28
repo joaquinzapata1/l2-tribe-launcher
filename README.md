@@ -5,6 +5,7 @@ Windows installer, updater and launcher for the complete Grand Crusade client.
 ## Features
 
 - installs the complete client into an empty folder
+- asks the player to choose the install folder on a new installation
 - checks the latest `client-v*` GitHub Release
 - downloads up to four immutable content packages concurrently
 - installs a local `client-manifest.json` for development
@@ -14,6 +15,7 @@ Windows installer, updater and launcher for the complete Grand Crusade client.
 - validates every package and extracted file
 - backs up replaced/deleted client files
 - rolls back if applying the patch fails
+- allows an active check, download or installation to be cancelled safely
 - records the installed patch version
 - launches `system-e/l2.exe`
 

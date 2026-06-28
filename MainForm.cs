@@ -20,6 +20,7 @@ internal sealed class MainForm : Form
     private readonly Button _browseButton = new();
     private readonly Button _checkButton = new();
     private readonly Button _updateButton = new();
+    private readonly Button _cancelButton = new();
     private readonly Button _repairButton = new();
     private readonly Button _localManifestButton = new();
     private readonly Button _playButton = new();
@@ -114,6 +115,7 @@ internal sealed class MainForm : Form
         folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _clientPath.Dock = DockStyle.Fill;
         _clientPath.Font = new Font("Segoe UI", 10f);
+        _clientPath.PlaceholderText = @"Ejemplo: C:\Games\Interlude";
         _clientPath.Margin = new Padding(0, 0, 8, 0);
         _clientPath.TextChanged += (_, _) => RefreshInstalledVersion();
         StyleSecondaryButton(_browseButton, "Elegir carpeta");
@@ -184,6 +186,9 @@ internal sealed class MainForm : Form
         StylePrimaryButton(_updateButton, "Instalar cliente");
         _updateButton.Enabled = false;
         _updateButton.Click += async (_, _) => await InstallLatestAsync(repair: false);
+        StyleSecondaryButton(_cancelButton, "Cancelar");
+        _cancelButton.Enabled = false;
+        _cancelButton.Click += (_, _) => CancelCurrentOperation();
         StyleSecondaryButton(_playButton, "Jugar");
         _playButton.Click += (_, _) => LaunchGame();
         StyleSecondaryButton(_repairButton, "Reparar");
@@ -194,6 +199,7 @@ internal sealed class MainForm : Form
         StyleSecondaryButton(_checkButton, "Buscar actualizacion");
         _checkButton.Click += async (_, _) => await CheckForUpdatesAsync(showErrors: true);
         actions.Controls.Add(_updateButton);
+        actions.Controls.Add(_cancelButton);
         actions.Controls.Add(_playButton);
         actions.Controls.Add(_repairButton);
         actions.Controls.Add(_localManifestButton);
@@ -259,10 +265,10 @@ internal sealed class MainForm : Form
         var executableDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         _clientPath.Text = File.Exists(Path.Combine(executableDirectory, "system-e", "l2.exe"))
             ? executableDirectory
-            : @"C:\Games\Interlude";
+            : string.Empty;
     }
 
-    private void BrowseClientDirectory()
+    private bool BrowseClientDirectory()
     {
         using var dialog = new FolderBrowserDialog
         {
@@ -274,7 +280,9 @@ internal sealed class MainForm : Form
         {
             _clientPath.Text = dialog.SelectedPath;
             SettingsStore.Save(new UpdaterSettings { ClientDirectory = dialog.SelectedPath });
+            return true;
         }
+        return false;
     }
 
     private async Task CheckForUpdatesAsync(bool showErrors)
@@ -286,8 +294,8 @@ internal sealed class MainForm : Form
 
         try
         {
-            SetBusy(true, "Buscando la ultima version del cliente...");
             _operation = new CancellationTokenSource();
+            SetBusy(true, "Buscando la ultima version del cliente...");
             _latestRelease = await _releaseClient.GetLatestContentAsync(_operation.Token);
             _availableVersion.Text = _latestRelease.Version;
             _releaseNotes.Text = string.IsNullOrWhiteSpace(_latestRelease.Notes)
@@ -295,11 +303,15 @@ internal sealed class MainForm : Form
                 : _latestRelease.Notes;
             _status.Text = "Cliente disponible. Podes instalar, actualizar o reparar.";
         }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "Busqueda cancelada.";
+        }
         catch (Exception error)
         {
             _latestRelease = null;
             _availableVersion.Text = "No publicada";
-            _releaseNotes.Text = "Todavia podes probar el launcher con un manifiesto local.";
+            _releaseNotes.Text = "No se pudo consultar la release publica.";
             _status.Text = error.Message;
             if (showErrors)
             {
@@ -335,8 +347,8 @@ internal sealed class MainForm : Form
         var manifestPath = Path.Combine(tempDirectory, $"client-manifest-{_latestRelease.Version}.json");
         try
         {
-            SetBusy(true, repair ? "Preparando reparacion..." : "Preparando cliente...");
             _operation = new CancellationTokenSource();
+            SetBusy(true, repair ? "Preparando reparacion..." : "Preparando cliente...");
             var checksum = await _releaseClient.DownloadChecksumAsync(
                 _latestRelease.ManifestChecksumUrl,
                 _operation.Token);
@@ -350,6 +362,10 @@ internal sealed class MainForm : Form
                 }),
                 _operation.Token);
             await InstallContentManifestAsync(manifestPath, checksum, repair, _operation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "Operacion cancelada. No se dejaron cambios incompletos.";
         }
         catch (Exception error)
         {
@@ -383,9 +399,13 @@ internal sealed class MainForm : Form
 
         try
         {
-            SetBusy(true, "Verificando manifiesto local...");
             _operation = new CancellationTokenSource();
+            SetBusy(true, "Verificando manifiesto local...");
             await InstallContentManifestAsync(dialog.FileName, null, false, _operation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "Operacion cancelada. No se dejaron cambios incompletos.";
         }
         catch (Exception error)
         {
@@ -444,7 +464,7 @@ internal sealed class MainForm : Form
         _updateButton.Text = state is null ? "Instalar cliente" : "Actualizar";
         _playButton.Enabled = IsClientInstalled();
         _repairButton.Enabled = state is not null && _latestRelease is not null && _operation is null;
-        _updateButton.Enabled = _latestRelease is not null && HasInstallPath() && _operation is null;
+        _updateButton.Enabled = _latestRelease is not null && _operation is null;
     }
 
     private bool IsClientInstalled() =>
@@ -456,13 +476,10 @@ internal sealed class MainForm : Form
     {
         if (!HasInstallPath())
         {
-            MessageBox.Show(
-                this,
-                "Elegi una carpeta de instalacion.",
-                "Falta la carpeta",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-            return false;
+            if (!BrowseClientDirectory())
+            {
+                return false;
+            }
         }
 
         Directory.CreateDirectory(_clientPath.Text);
@@ -483,6 +500,17 @@ internal sealed class MainForm : Form
 
         SettingsStore.Save(new UpdaterSettings { ClientDirectory = _clientPath.Text });
         return true;
+    }
+
+    private void CancelCurrentOperation()
+    {
+        if (_operation is null)
+        {
+            return;
+        }
+        _cancelButton.Enabled = false;
+        _status.Text = "Cancelando...";
+        _operation.Cancel();
     }
 
     private void LaunchGame()
@@ -511,10 +539,11 @@ internal sealed class MainForm : Form
         _browseButton.Enabled = !busy;
         _checkButton.Enabled = !busy;
         _localManifestButton.Enabled = !busy;
+        _cancelButton.Enabled = busy;
         _playButton.Enabled = !busy && IsClientInstalled();
         _repairButton.Enabled = !busy && _latestRelease is not null &&
                                 StateFiles.ReadContentManifest(_clientPath.Text) is not null;
-        _updateButton.Enabled = !busy && _latestRelease is not null && HasInstallPath();
+        _updateButton.Enabled = !busy && _latestRelease is not null;
         _clientPath.ReadOnly = busy;
         if (busy)
         {

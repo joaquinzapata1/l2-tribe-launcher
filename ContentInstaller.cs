@@ -132,6 +132,7 @@ internal sealed class ContentInstaller : IDisposable
 
                 foreach (var file in filesByPackage[package.Id])
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var source = ResolveClientPath(packageStage, file.Path);
                     var target = ResolveClientPath(clientDirectory, file.Path);
                     if (Directory.Exists(target))
@@ -154,6 +155,7 @@ internal sealed class ContentInstaller : IDisposable
             var deleted = 0;
             foreach (var relativePath in deletePaths)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var target = ResolveClientPath(clientDirectory, relativePath);
                 if (File.Exists(target))
                 {
@@ -212,6 +214,10 @@ internal sealed class ContentInstaller : IDisposable
                     rollbackError);
             }
 
+            if (installError is OperationCanceledException)
+            {
+                throw;
+            }
             throw new InvalidOperationException(
                 "Client installation failed. The previous state was restored.",
                 installError);
