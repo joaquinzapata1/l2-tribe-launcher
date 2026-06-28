@@ -1,21 +1,34 @@
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace L2InterludeUpdater;
 
 internal sealed class MainForm : Form
 {
-    private static readonly Color Ink = Color.FromArgb(45, 37, 29);
-    private static readonly Color Paper = Color.FromArgb(244, 239, 226);
-    private static readonly Color Gold = Color.FromArgb(183, 132, 48);
-    private static readonly Color Moss = Color.FromArgb(53, 111, 83);
-    private static readonly Color Muted = Color.FromArgb(111, 101, 87);
+    [DllImport("user32.dll")]
+    private static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(
+        IntPtr windowHandle,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam);
+
+    private static readonly Color Canvas = Color.FromArgb(29, 32, 38);
+    private static readonly Color Surface = Color.FromArgb(37, 41, 48);
+    private static readonly Color SurfaceRaised = Color.FromArgb(46, 50, 58);
+    private static readonly Color Gold = Color.FromArgb(235, 170, 57);
+    private static readonly Color Cream = Color.FromArgb(246, 241, 229);
+    private static readonly Color Muted = Color.FromArgb(174, 179, 184);
 
     private readonly TextBox _clientPath = new();
     private readonly Label _installedVersion = new();
     private readonly Label _availableVersion = new();
     private readonly Label _status = new();
-    private readonly RichTextBox _releaseNotes = new();
+    private readonly Label _releaseNotes = new();
     private readonly ProgressBar _progress = new();
     private readonly Button _browseButton = new();
     private readonly Button _checkButton = new();
@@ -23,7 +36,6 @@ internal sealed class MainForm : Form
     private readonly Button _cancelButton = new();
     private readonly Button _repairButton = new();
     private readonly Button _localManifestButton = new();
-    private readonly Button _playButton = new();
     private readonly GitHubReleaseClient _releaseClient = new();
     private readonly ContentInstaller _contentInstaller = new();
     private ContentReleaseInfo? _latestRelease;
@@ -31,12 +43,14 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "Interlude Launcher";
+        Text = "Interlude";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(800, 600);
-        Size = new Size(920, 690);
-        BackColor = Paper;
-        ForeColor = Ink;
+        MinimumSize = new Size(900, 640);
+        Size = new Size(1000, 680);
+        FormBorderStyle = FormBorderStyle.None;
+        MaximizeBox = false;
+        BackColor = Canvas;
+        ForeColor = Cream;
         Font = new Font("Segoe UI", 9.5f);
         AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -55,156 +69,266 @@ internal sealed class MainForm : Form
 
     private void BuildLayout()
     {
-        var header = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 112,
-            BackColor = Ink,
-            Padding = new Padding(28, 20, 28, 16)
-        };
-        header.Controls.Add(new Label
-        {
-            Text = "INTERLUDE LAUNCHER",
-            ForeColor = Color.FromArgb(232, 195, 117),
-            Font = new Font("Bahnschrift SemiBold", 22f),
-            AutoSize = true,
-            Location = new Point(26, 18)
-        });
-        header.Controls.Add(new Label
-        {
-            Text = "Install, update, repair and play",
-            ForeColor = Color.FromArgb(211, 203, 188),
-            Font = new Font("Georgia", 10.5f, FontStyle.Italic),
-            AutoSize = true,
-            Location = new Point(29, 65)
-        });
-        Controls.Add(header);
-
-        var content = new TableLayoutPanel
+        var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(28, 22, 28, 24),
+            BackColor = Canvas,
             ColumnCount = 1,
-            RowCount = 6
+            RowCount = 3,
+            Padding = new Padding(1)
         };
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        Controls.Add(content);
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 178));
+        Controls.Add(root);
 
-        content.Controls.Add(new Label
+        var header = new TableLayoutPanel
         {
-            Text = "CARPETA DE INSTALACION",
-            Font = new Font("Bahnschrift SemiBold", 9.5f),
-            ForeColor = Muted,
+            Dock = DockStyle.Fill,
+            BackColor = Canvas,
+            ColumnCount = 2,
+            Padding = new Padding(36, 16, 36, 8)
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var brand = new Panel { Dock = DockStyle.Fill };
+        brand.Controls.Add(new PictureBox
+        {
+            Image = LoadEmbeddedImage("L2InterludeUpdater.Assets.l2-hamburgo-logo.png"),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            BackColor = Color.Transparent,
+            Dock = DockStyle.Left,
+            Width = 205,
+            Margin = new Padding(0)
+        });
+        var brandSubtitle = new Label
+        {
+            Text = "HAMBURGO  /  INTERLUDE",
+            ForeColor = Gold,
+            BackColor = Color.Transparent,
+            Font = new Font("Bahnschrift SemiBold", 7.5f),
             AutoSize = true,
-            Margin = new Padding(0, 0, 0, 6)
+            Location = new Point(57, 42)
+        };
+        brand.Controls.Add(brandSubtitle);
+        brandSubtitle.BringToFront();
+        brand.MouseDown += DragWindow;
+        header.Controls.Add(brand, 0, 0);
+        var buildBadge = new Label
+        {
+            Text = "PUBLIC TEST BUILD",
+            AutoSize = true,
+            ForeColor = Muted,
+            BackColor = Surface,
+            Font = new Font("Bahnschrift SemiBold", 8.5f),
+            Padding = new Padding(12, 7, 12, 7),
+            Margin = new Padding(0, 8, 0, 0),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
+        };
+        var windowTools = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(0)
+        };
+        windowTools.Controls.Add(buildBadge);
+        var minimizeButton = WindowButton("_", (_, _) => WindowState = FormWindowState.Minimized);
+        var closeButton = WindowButton("X", (_, _) => CloseLauncher());
+        closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(126, 50, 45);
+        windowTools.Controls.Add(minimizeButton);
+        windowTools.Controls.Add(closeButton);
+        header.Controls.Add(windowTools, 1, 0);
+        header.MouseDown += DragWindow;
+        root.Controls.Add(header, 0, 0);
+
+        var hero = new HeroPanel(LoadEmbeddedImage("L2InterludeUpdater.Assets.launcher-hero.jpg"))
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(36, 4, 36, 18),
+            Padding = new Padding(30)
+        };
+        var heroLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            ColumnCount = 2,
+            RowCount = 1
+        };
+        heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66));
+        heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
+        hero.Controls.Add(heroLayout);
+
+        var heroCopy = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            RowCount = 4,
+            ColumnCount = 1,
+            Margin = new Padding(0, 0, 24, 0)
+        };
+        heroCopy.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heroCopy.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heroCopy.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heroCopy.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        heroCopy.Controls.Add(new Label
+        {
+            Text = "GRAND CRUSADE CLIENT  /  INTERLUDE",
+            ForeColor = Gold,
+            Font = new Font("Bahnschrift SemiBold", 9f),
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 10)
         }, 0, 0);
+        heroCopy.Controls.Add(new Label
+        {
+            Text = "Return to the classic age.",
+            ForeColor = Color.White,
+            Font = new Font("Georgia", 27f, FontStyle.Bold),
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 8)
+        }, 0, 1);
+        heroCopy.Controls.Add(new Label
+        {
+            Text = "Instala, actualiza y repara el cliente completo desde un solo lugar.",
+            ForeColor = Color.FromArgb(218, 222, 220),
+            Font = new Font("Segoe UI", 10.5f),
+            AutoSize = true,
+            Margin = new Padding(1, 0, 0, 16)
+        }, 0, 2);
+        _releaseNotes.Dock = DockStyle.Fill;
+        _releaseNotes.BackColor = Color.Transparent;
+        _releaseNotes.ForeColor = Color.FromArgb(197, 204, 201);
+        _releaseNotes.Font = new Font("Segoe UI", 9.5f);
+        _releaseNotes.Text = "Buscando la ultima version disponible...";
+        _releaseNotes.AutoEllipsis = true;
+        _releaseNotes.TextAlign = ContentAlignment.TopLeft;
+        _releaseNotes.Margin = new Padding(0);
+        heroCopy.Controls.Add(_releaseNotes, 0, 3);
+        heroLayout.Controls.Add(heroCopy, 0, 0);
+
+        var heroAction = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(176, 21, 27, 31),
+            Padding = new Padding(20),
+            RowCount = 4,
+            ColumnCount = 2,
+            Margin = new Padding(0)
+        };
+        heroAction.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        heroAction.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        heroAction.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heroAction.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heroAction.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        heroAction.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+        heroAction.Controls.Add(VersionLabel("INSTALADA"), 0, 0);
+        heroAction.Controls.Add(VersionLabel("DISPONIBLE"), 1, 0);
+        ConfigureVersionValue(_installedVersion, "Sin instalar");
+        ConfigureVersionValue(_availableVersion, "Buscando...");
+        heroAction.Controls.Add(_installedVersion, 0, 1);
+        heroAction.Controls.Add(_availableVersion, 1, 1);
+        StylePrimaryButton(_updateButton, "INSTALAR CLIENTE");
+        _updateButton.Dock = DockStyle.Fill;
+        _updateButton.Enabled = false;
+        _updateButton.Click += async (_, _) => await HandlePrimaryActionAsync();
+        heroAction.SetColumnSpan(_updateButton, 2);
+        heroAction.Controls.Add(_updateButton, 0, 3);
+        StyleCancelButton(_cancelButton);
+        _cancelButton.Dock = DockStyle.Fill;
+        _cancelButton.Visible = false;
+        _cancelButton.Click += (_, _) => CancelCurrentOperation();
+        heroAction.SetColumnSpan(_cancelButton, 2);
+        heroAction.Controls.Add(_cancelButton, 0, 3);
+        heroLayout.Controls.Add(heroAction, 1, 0);
+        root.Controls.Add(hero, 0, 1);
+
+        var footer = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Surface,
+            Padding = new Padding(36, 16, 36, 18),
+            ColumnCount = 1,
+            RowCount = 3
+        };
+        footer.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+        footer.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         var folderRow = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            ColumnCount = 2,
-            Margin = new Padding(0, 0, 0, 16)
-        };
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        _clientPath.Dock = DockStyle.Fill;
-        _clientPath.Font = new Font("Segoe UI", 10f);
-        _clientPath.PlaceholderText = @"Ejemplo: C:\Games\Interlude";
-        _clientPath.Margin = new Padding(0, 0, 8, 0);
-        _clientPath.TextChanged += (_, _) => RefreshInstalledVersion();
-        StyleSecondaryButton(_browseButton, "Elegir carpeta");
-        _browseButton.Click += (_, _) => BrowseClientDirectory();
-        folderRow.Controls.Add(_clientPath, 0, 0);
-        folderRow.Controls.Add(_browseButton, 1, 0);
-        content.Controls.Add(folderRow, 0, 1);
-
-        var card = new Panel
-        {
             Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(251, 248, 239),
-            Padding = new Padding(22),
-            Margin = new Padding(0, 0, 0, 16)
-        };
-        content.Controls.Add(card, 0, 2);
-        var cardLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            RowCount = 3
-        };
-        cardLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        cardLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        cardLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        cardLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        cardLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        card.Controls.Add(cardLayout);
-
-        cardLayout.Controls.Add(VersionLabel("INSTALADA"), 0, 0);
-        cardLayout.Controls.Add(VersionLabel("DISPONIBLE"), 1, 0);
-        ConfigureVersionValue(_installedVersion, "Sin instalar");
-        ConfigureVersionValue(_availableVersion, "Buscando...");
-        cardLayout.Controls.Add(_installedVersion, 0, 1);
-        cardLayout.Controls.Add(_availableVersion, 1, 1);
-
-        _releaseNotes.Dock = DockStyle.Fill;
-        _releaseNotes.ReadOnly = true;
-        _releaseNotes.BorderStyle = BorderStyle.None;
-        _releaseNotes.BackColor = card.BackColor;
-        _releaseNotes.ForeColor = Ink;
-        _releaseNotes.Font = new Font("Georgia", 10f);
-        _releaseNotes.Text = "Las novedades de la proxima version apareceran aca.";
-        _releaseNotes.Margin = new Padding(0, 18, 0, 0);
-        cardLayout.SetColumnSpan(_releaseNotes, 2);
-        cardLayout.Controls.Add(_releaseNotes, 0, 2);
-
-        _status.Text = "Listo.";
-        _status.AutoSize = true;
-        _status.ForeColor = Muted;
-        _status.Margin = new Padding(0, 0, 0, 6);
-        content.Controls.Add(_status, 0, 3);
-
-        _progress.Dock = DockStyle.Top;
-        _progress.Height = 12;
-        _progress.Style = ProgressBarStyle.Continuous;
-        _progress.Margin = new Padding(0, 0, 0, 18);
-        content.Controls.Add(_progress, 0, 4);
-
-        var actions = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = true,
+            ColumnCount = 3,
             Margin = new Padding(0)
         };
-        StylePrimaryButton(_updateButton, "Instalar cliente");
-        _updateButton.Enabled = false;
-        _updateButton.Click += async (_, _) => await InstallLatestAsync(repair: false);
-        StyleSecondaryButton(_cancelButton, "Cancelar");
-        _cancelButton.Enabled = false;
-        _cancelButton.Click += (_, _) => CancelCurrentOperation();
-        StyleSecondaryButton(_playButton, "Jugar");
-        _playButton.Click += (_, _) => LaunchGame();
-        StyleSecondaryButton(_repairButton, "Reparar");
+        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        folderRow.Controls.Add(new Label
+        {
+            Text = "CARPETA DE JUEGO",
+            ForeColor = Muted,
+            Font = new Font("Bahnschrift SemiBold", 9f),
+            AutoSize = true,
+            Anchor = AnchorStyles.Left
+        }, 0, 0);
+        _clientPath.Dock = DockStyle.Fill;
+        _clientPath.Font = new Font("Segoe UI", 10f);
+        _clientPath.BackColor = SurfaceRaised;
+        _clientPath.ForeColor = Cream;
+        _clientPath.BorderStyle = BorderStyle.FixedSingle;
+        _clientPath.PlaceholderText = @"Elegi una carpeta, por ejemplo C:\Games\Interlude";
+        _clientPath.Margin = new Padding(0, 3, 10, 4);
+        _clientPath.TextChanged += (_, _) => RefreshInstalledVersion();
+        StyleSecondaryButton(_browseButton, "ELEGIR CARPETA");
+        _browseButton.Click += (_, _) => BrowseClientDirectory();
+        folderRow.Controls.Add(_clientPath, 1, 0);
+        folderRow.Controls.Add(_browseButton, 2, 0);
+        footer.Controls.Add(folderRow, 0, 0);
+
+        var progressLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = new Padding(0)
+        };
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14));
+        _status.Text = "Listo.";
+        _status.AutoEllipsis = true;
+        _status.Dock = DockStyle.Fill;
+        _status.ForeColor = Muted;
+        _status.Font = new Font("Segoe UI", 9f);
+        _status.Margin = new Padding(0, 3, 0, 5);
+        progressLayout.Controls.Add(_status, 0, 0);
+        _progress.Dock = DockStyle.Fill;
+        _progress.Style = ProgressBarStyle.Continuous;
+        _progress.ForeColor = Gold;
+        _progress.Margin = new Padding(0);
+        progressLayout.Controls.Add(_progress, 0, 1);
+        footer.Controls.Add(progressLayout, 0, 1);
+
+        var tools = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            Margin = new Padding(0, 8, 0, 0)
+        };
+        StyleSecondaryButton(_repairButton, "REPARAR");
         _repairButton.Enabled = false;
         _repairButton.Click += async (_, _) => await InstallLatestAsync(repair: true);
-        StyleSecondaryButton(_localManifestButton, "Manifiesto local");
+        StyleSecondaryButton(_localManifestButton, "INSTALACION MANUAL");
         _localManifestButton.Click += async (_, _) => await InstallLocalManifestAsync();
-        StyleSecondaryButton(_checkButton, "Buscar actualizacion");
+        StyleSecondaryButton(_checkButton, "BUSCAR ACTUALIZACION");
         _checkButton.Click += async (_, _) => await CheckForUpdatesAsync(showErrors: true);
-        actions.Controls.Add(_updateButton);
-        actions.Controls.Add(_cancelButton);
-        actions.Controls.Add(_playButton);
-        actions.Controls.Add(_repairButton);
-        actions.Controls.Add(_localManifestButton);
-        actions.Controls.Add(_checkButton);
-        content.Controls.Add(actions, 0, 5);
+        tools.Controls.Add(_repairButton);
+        tools.Controls.Add(_localManifestButton);
+        tools.Controls.Add(_checkButton);
+        footer.Controls.Add(tools, 0, 2);
+        root.Controls.Add(footer, 0, 2);
     }
 
     private static Label VersionLabel(string text) => new()
@@ -220,23 +344,25 @@ internal sealed class MainForm : Form
     {
         label.Text = text;
         label.AutoSize = true;
-        label.ForeColor = Ink;
-        label.Font = new Font("Bahnschrift SemiBold", 16f);
+        label.ForeColor = Cream;
+        label.Font = new Font("Bahnschrift SemiBold", 14f);
         label.Margin = new Padding(0);
     }
 
     private static void StylePrimaryButton(Button button, string text)
     {
         button.Text = text;
-        button.AutoSize = true;
-        button.Height = 38;
+        button.AutoSize = false;
+        button.Height = 46;
         button.Padding = new Padding(14, 5, 14, 5);
         button.FlatStyle = FlatStyle.Flat;
         button.FlatAppearance.BorderSize = 0;
-        button.BackColor = Moss;
-        button.ForeColor = Color.White;
-        button.Font = new Font("Bahnschrift SemiBold", 9.5f);
-        button.Margin = new Padding(8, 0, 0, 0);
+        button.BackColor = Gold;
+        button.ForeColor = Canvas;
+        button.FlatAppearance.MouseOverBackColor = Color.FromArgb(247, 186, 75);
+        button.FlatAppearance.MouseDownBackColor = Color.FromArgb(210, 144, 35);
+        button.Font = new Font("Bahnschrift SemiBold", 10f);
+        button.Margin = new Padding(0);
     }
 
     private static void StyleSecondaryButton(Button button, string text)
@@ -246,11 +372,73 @@ internal sealed class MainForm : Form
         button.Height = 34;
         button.Padding = new Padding(10, 3, 10, 3);
         button.FlatStyle = FlatStyle.Flat;
-        button.FlatAppearance.BorderColor = Gold;
+        button.FlatAppearance.BorderColor = Color.FromArgb(91, 97, 105);
         button.FlatAppearance.BorderSize = 1;
-        button.BackColor = Paper;
-        button.ForeColor = Ink;
+        button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
+        button.BackColor = Surface;
+        button.ForeColor = Cream;
+        button.Font = new Font("Bahnschrift SemiBold", 8.5f);
         button.Margin = new Padding(8, 0, 0, 0);
+    }
+
+    private static void StyleCancelButton(Button button)
+    {
+        button.Text = "CANCELAR";
+        button.AutoSize = false;
+        button.Height = 46;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 1;
+        button.FlatAppearance.BorderColor = Color.FromArgb(207, 104, 83);
+        button.FlatAppearance.MouseOverBackColor = Color.FromArgb(112, 50, 45);
+        button.BackColor = Color.FromArgb(86, 44, 42);
+        button.ForeColor = Color.White;
+        button.Font = new Font("Bahnschrift SemiBold", 10f);
+        button.Margin = new Padding(0);
+    }
+
+    private static Button WindowButton(string text, EventHandler onClick)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Width = 34,
+            Height = 30,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Canvas,
+            ForeColor = Muted,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Margin = new Padding(6, 5, 0, 0),
+            TabStop = false
+        };
+        button.FlatAppearance.BorderSize = 0;
+        button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
+        button.Click += onClick;
+        return button;
+    }
+
+    private void DragWindow(object? sender, MouseEventArgs eventArgs)
+    {
+        if (eventArgs.Button != MouseButtons.Left)
+        {
+            return;
+        }
+        ReleaseCapture();
+        SendMessage(Handle, 0x00A1, (IntPtr)2, IntPtr.Zero);
+    }
+
+    private void CloseLauncher()
+    {
+        if (_operation is not null)
+        {
+            MessageBox.Show(
+                this,
+                "Cancela la operacion actual antes de cerrar el launcher.",
+                "Operacion en curso",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+        Close();
     }
 
     private void LoadSettings()
@@ -310,7 +498,7 @@ internal sealed class MainForm : Form
         catch (Exception error)
         {
             _latestRelease = null;
-            _availableVersion.Text = "No publicada";
+            _availableVersion.Text = "Sin release";
             _releaseNotes.Text = "No se pudo consultar la release publica.";
             _status.Text = error.Message;
             if (showErrors)
@@ -325,6 +513,25 @@ internal sealed class MainForm : Form
             SetBusy(false);
             RefreshInstalledVersion();
         }
+    }
+
+    private async Task HandlePrimaryActionAsync()
+    {
+        var state = Directory.Exists(_clientPath.Text)
+            ? StateFiles.ReadContentManifest(_clientPath.Text)
+            : null;
+        var canPlay = IsClientInstalled() &&
+                      (_latestRelease is null ||
+                       state is not null && string.Equals(
+                           state.ClientVersion,
+                           _latestRelease.Version,
+                           StringComparison.OrdinalIgnoreCase));
+        if (canPlay)
+        {
+            LaunchGame();
+            return;
+        }
+        await InstallLatestAsync(repair: false);
     }
 
     private async Task InstallLatestAsync(bool repair)
@@ -460,11 +667,21 @@ internal sealed class MainForm : Form
         var state = Directory.Exists(_clientPath.Text)
             ? StateFiles.ReadContentManifest(_clientPath.Text)
             : null;
-        _installedVersion.Text = state?.ClientVersion ?? "Sin instalar";
-        _updateButton.Text = state is null ? "Instalar cliente" : "Actualizar";
-        _playButton.Enabled = IsClientInstalled();
+        var clientInstalled = IsClientInstalled();
+        var upToDate = state is not null && _latestRelease is not null &&
+                       string.Equals(
+                           state.ClientVersion,
+                           _latestRelease.Version,
+                           StringComparison.OrdinalIgnoreCase);
+        _installedVersion.Text = state?.ClientVersion ?? (clientInstalled ? "Detectado" : "Sin instalar");
+        _updateButton.Text = !clientInstalled
+            ? "INSTALAR CLIENTE"
+            : upToDate || _latestRelease is null
+                ? "JUGAR"
+                : "ACTUALIZAR";
         _repairButton.Enabled = state is not null && _latestRelease is not null && _operation is null;
-        _updateButton.Enabled = _latestRelease is not null && _operation is null;
+        _updateButton.Enabled = _operation is null && (clientInstalled || _latestRelease is not null);
+        RefreshPrimaryButtonColors();
     }
 
     private bool IsClientInstalled() =>
@@ -488,7 +705,7 @@ internal sealed class MainForm : Form
         {
             var answer = MessageBox.Show(
                 this,
-                "La carpeta no esta vacia. El launcher respaldara los archivos que deba reemplazar. ¿Continuar?",
+                "La carpeta no esta vacia. El launcher respaldara los archivos que deba reemplazar. Continuar?",
                 "Carpeta existente",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
@@ -540,10 +757,12 @@ internal sealed class MainForm : Form
         _checkButton.Enabled = !busy;
         _localManifestButton.Enabled = !busy;
         _cancelButton.Enabled = busy;
-        _playButton.Enabled = !busy && IsClientInstalled();
+        _cancelButton.Visible = busy;
         _repairButton.Enabled = !busy && _latestRelease is not null &&
                                 StateFiles.ReadContentManifest(_clientPath.Text) is not null;
-        _updateButton.Enabled = !busy && _latestRelease is not null;
+        _updateButton.Visible = !busy;
+        _updateButton.Enabled = !busy && (IsClientInstalled() || _latestRelease is not null);
+        RefreshPrimaryButtonColors();
         _clientPath.ReadOnly = busy;
         if (busy)
         {
@@ -555,6 +774,12 @@ internal sealed class MainForm : Form
         }
     }
 
+    private void RefreshPrimaryButtonColors()
+    {
+        _updateButton.BackColor = _updateButton.Enabled ? Gold : SurfaceRaised;
+        _updateButton.ForeColor = _updateButton.Enabled ? Canvas : Muted;
+    }
+
     private void ShowError(Exception error)
     {
         _status.Text = error.Message;
@@ -564,6 +789,106 @@ internal sealed class MainForm : Form
             "No se pudo completar la operacion",
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
+    }
+
+    private static Image LoadEmbeddedImage(string resourceName)
+    {
+        using var stream = typeof(MainForm).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded launcher asset not found: {resourceName}");
+        using var source = Image.FromStream(stream);
+        return new Bitmap(source);
+    }
+
+    private sealed class HeroPanel : Panel
+    {
+        private readonly Image _backgroundImage;
+
+        public HeroPanel(Image backgroundImage)
+        {
+            _backgroundImage = backgroundImage;
+            DoubleBuffered = true;
+            ResizeRedraw = true;
+        }
+
+        protected override void OnResize(EventArgs eventArgs)
+        {
+            base.OnResize(eventArgs);
+            if (Width <= 0 || Height <= 0)
+            {
+                return;
+            }
+
+            using var shape = CreateRoundedRectangle(ClientRectangle, 22);
+            var previousRegion = Region;
+            Region = new Region(shape);
+            previousRegion?.Dispose();
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs paintEventArgs)
+        {
+            var graphics = paintEventArgs.Graphics;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var shape = CreateRoundedRectangle(ClientRectangle, 22);
+            graphics.SetClip(shape);
+
+            var scale = Math.Max(
+                (float)Width / _backgroundImage.Width,
+                (float)Height / _backgroundImage.Height);
+            var drawWidth = (int)Math.Ceiling(_backgroundImage.Width * scale);
+            var drawHeight = (int)Math.Ceiling(_backgroundImage.Height * scale);
+            var destination = new Rectangle(
+                (Width - drawWidth) / 2,
+                (Height - drawHeight) / 2,
+                drawWidth,
+                drawHeight);
+            graphics.DrawImage(_backgroundImage, destination);
+
+            using var horizontalScrim = new LinearGradientBrush(
+                ClientRectangle,
+                Color.FromArgb(225, 12, 17, 18),
+                Color.FromArgb(72, 12, 17, 18),
+                LinearGradientMode.Horizontal);
+            graphics.FillRectangle(horizontalScrim, ClientRectangle);
+            using var verticalScrim = new LinearGradientBrush(
+                ClientRectangle,
+                Color.FromArgb(15, 0, 0, 0),
+                Color.FromArgb(150, 0, 0, 0),
+                LinearGradientMode.Vertical);
+            graphics.FillRectangle(verticalScrim, ClientRectangle);
+            graphics.ResetClip();
+
+            using var border = new Pen(Color.FromArgb(45, 235, 170, 57), 1f);
+            graphics.DrawPath(border, shape);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _backgroundImage.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(Rectangle bounds, int radius)
+        {
+            var path = new GraphicsPath();
+            if (bounds.Width <= 1 || bounds.Height <= 1)
+            {
+                path.AddRectangle(bounds);
+                return path;
+            }
+
+            bounds.Width--;
+            bounds.Height--;
+            var diameter = radius * 2;
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
     }
 
     private static class SettingsStore

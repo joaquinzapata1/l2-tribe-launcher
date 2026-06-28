@@ -37,6 +37,12 @@ build/updater/win-x64/InterludeLauncher.exe.sha256
 The release build is a self-contained single-file Windows executable. It does
 not require .NET to be installed on the player's machine.
 
+## Branding
+
+The embedded launcher logo and hero artwork come from the L2 Hamburgo website
+repository (`joaquinzapata1/L2-Hamburgo`). They are bundled into the single-file
+executable at publish time; players do not download separate UI assets.
+
 ## Public distribution and signing
 
 The generated development EXE is not signed. Before publishing it to players,

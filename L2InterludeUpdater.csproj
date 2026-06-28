@@ -20,4 +20,8 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>none</DebugType>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\l2-hamburgo-logo.png" />
+    <EmbeddedResource Include="Assets\launcher-hero.jpg" />
+  </ItemGroup>
 </Project>
