@@ -5,6 +5,10 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Contains("--install-launcher", StringComparer.OrdinalIgnoreCase))
+        {
+            return InstallLauncher(args);
+        }
         if (args.Contains("--install-content", StringComparer.OrdinalIgnoreCase))
         {
             return RunContentCommandLineAsync(args).GetAwaiter().GetResult();
@@ -17,6 +21,44 @@ internal static class Program
         ApplicationConfiguration.Initialize();
         Application.Run(new MainForm());
         return 0;
+    }
+
+    private static int InstallLauncher(string[] args)
+    {
+        string? client = null;
+        string? shortcutDirectory = null;
+        for (var index = 0; index < args.Length; index++)
+        {
+            switch (args[index].ToLowerInvariant())
+            {
+                case "--client":
+                    client = ReadValue(args, ref index);
+                    break;
+                case "--shortcut-dir":
+                    shortcutDirectory = ReadValue(args, ref index);
+                    break;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(client))
+        {
+            Console.Error.WriteLine(
+                "Usage: InterludeLauncher.exe --install-launcher --client <client-dir> [--shortcut-dir <dir>]");
+            return 2;
+        }
+
+        try
+        {
+            var result = LauncherInstallation.EnsureInstalled(client, shortcutDirectory);
+            Console.WriteLine($"Launcher: {result.LauncherPath}");
+            Console.WriteLine($"Shortcut: {result.ShortcutPath}");
+            return 0;
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine(error);
+            return 1;
+        }
     }
 
     private static async Task<int> RunCommandLineAsync(string[] args)

@@ -17,12 +17,12 @@ internal sealed class MainForm : Form
         IntPtr wParam,
         IntPtr lParam);
 
-    private static readonly Color Canvas = Color.FromArgb(29, 32, 38);
-    private static readonly Color Surface = Color.FromArgb(37, 41, 48);
-    private static readonly Color SurfaceRaised = Color.FromArgb(46, 50, 58);
-    private static readonly Color Gold = Color.FromArgb(235, 170, 57);
-    private static readonly Color Cream = Color.FromArgb(246, 241, 229);
-    private static readonly Color Muted = Color.FromArgb(174, 179, 184);
+    private static readonly Color Canvas = LauncherBranding.Canvas;
+    private static readonly Color Surface = LauncherBranding.Surface;
+    private static readonly Color SurfaceRaised = LauncherBranding.SurfaceRaised;
+    private static readonly Color Gold = LauncherBranding.Accent;
+    private static readonly Color Cream = LauncherBranding.Text;
+    private static readonly Color Muted = LauncherBranding.MutedText;
 
     private readonly TextBox _clientPath = new();
     private readonly Label _installedVersion = new();
@@ -43,7 +43,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "Interlude";
+        Text = LauncherBranding.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(900, 640);
         Size = new Size(1000, 680);
@@ -94,7 +94,7 @@ internal sealed class MainForm : Form
         var brand = new Panel { Dock = DockStyle.Fill };
         brand.Controls.Add(new PictureBox
         {
-            Image = LoadEmbeddedImage("L2InterludeUpdater.Assets.l2-hamburgo-logo.png"),
+            Image = LoadEmbeddedImage(LauncherBranding.LogoResource),
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent,
             Dock = DockStyle.Left,
@@ -103,7 +103,7 @@ internal sealed class MainForm : Form
         });
         var brandSubtitle = new Label
         {
-            Text = "HAMBURGO  /  INTERLUDE",
+            Text = LauncherBranding.HeaderSubtitle,
             ForeColor = Gold,
             BackColor = Color.Transparent,
             Font = new Font("Bahnschrift SemiBold", 7.5f),
@@ -116,7 +116,7 @@ internal sealed class MainForm : Form
         header.Controls.Add(brand, 0, 0);
         var buildBadge = new Label
         {
-            Text = "PUBLIC TEST BUILD",
+            Text = LauncherBranding.BuildBadge,
             AutoSize = true,
             ForeColor = Muted,
             BackColor = Surface,
@@ -143,7 +143,7 @@ internal sealed class MainForm : Form
         header.MouseDown += DragWindow;
         root.Controls.Add(header, 0, 0);
 
-        var hero = new HeroPanel(LoadEmbeddedImage("L2InterludeUpdater.Assets.launcher-hero.jpg"))
+        var hero = new HeroPanel(LoadEmbeddedImage(LauncherBranding.HeroResource))
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(36, 4, 36, 18),
@@ -174,7 +174,7 @@ internal sealed class MainForm : Form
         heroCopy.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         heroCopy.Controls.Add(new Label
         {
-            Text = "GRAND CRUSADE CLIENT  /  INTERLUDE",
+            Text = LauncherBranding.HeroEyebrow,
             ForeColor = Gold,
             Font = new Font("Bahnschrift SemiBold", 9f),
             AutoSize = true,
@@ -182,7 +182,7 @@ internal sealed class MainForm : Form
         }, 0, 0);
         heroCopy.Controls.Add(new Label
         {
-            Text = "Return to the classic age.",
+            Text = LauncherBranding.HeroTitle,
             ForeColor = Color.White,
             Font = new Font("Georgia", 27f, FontStyle.Bold),
             AutoSize = true,
@@ -190,7 +190,7 @@ internal sealed class MainForm : Form
         }, 0, 1);
         heroCopy.Controls.Add(new Label
         {
-            Text = "Instala, actualiza y repara el cliente completo desde un solo lugar.",
+            Text = LauncherBranding.HeroDescription,
             ForeColor = Color.FromArgb(218, 222, 220),
             Font = new Font("Segoe UI", 10.5f),
             AutoSize = true,
@@ -648,6 +648,8 @@ internal sealed class MainForm : Form
                 cancellationToken),
             cancellationToken);
 
+        var launcherWarning = EnsureLauncherEntryPoint();
+
         var backupMessage = result.BackupDirectory is null
             ? "No habia archivos anteriores que respaldar."
             : $"Backup: {result.BackupDirectory}";
@@ -656,7 +658,8 @@ internal sealed class MainForm : Form
             $"Cliente {result.ClientVersion} listo.\n\n" +
             $"Archivos instalados: {result.InstalledFiles}\n" +
             $"Paquetes descargados: {result.DownloadedPackages}\n" +
-            $"Borrados: {result.DeletedPaths}\n{backupMessage}",
+            $"Borrados: {result.DeletedPaths}\n{backupMessage}" +
+            (launcherWarning is null ? "" : $"\n\n{launcherWarning}"),
             "Cliente actualizado",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
@@ -742,6 +745,12 @@ internal sealed class MainForm : Form
                 MessageBoxIcon.Warning);
             return;
         }
+        var launcherWarning = EnsureLauncherEntryPoint();
+        if (launcherWarning is not null)
+        {
+            _status.Text = launcherWarning;
+        }
+
         var executable = Path.Combine(_clientPath.Text, "system-e", "l2.exe");
         var game = Process.Start(new ProcessStartInfo
         {
@@ -750,6 +759,19 @@ internal sealed class MainForm : Form
             UseShellExecute = true
         });
         StartDiscordPresence(game, Path.GetDirectoryName(executable)!);
+    }
+
+    private string? EnsureLauncherEntryPoint()
+    {
+        try
+        {
+            LauncherInstallation.EnsureInstalled(_clientPath.Text);
+            return null;
+        }
+        catch (Exception error)
+        {
+            return $"No se pudo crear el acceso directo de L2 Hamburgo: {error.Message}";
+        }
     }
 
     private static void StartDiscordPresence(Process? game, string systemDirectory)

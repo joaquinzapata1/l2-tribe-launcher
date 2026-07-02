@@ -17,7 +17,11 @@ Windows installer, updater and launcher for the complete Grand Crusade client.
 - rolls back if applying the patch fails
 - allows an active check, download or installation to be cancelled safely
 - records the installed patch version
+- installs a persistent `L2 Hamburgo Launcher.exe` in the client directory
+- creates or repairs the `L2 Hamburgo` desktop shortcut
 - launches `system-e/l2.exe`
+
+Visual customization workflow: `docs/LAUNCHER-UI.md`.
 
 ## Build
 

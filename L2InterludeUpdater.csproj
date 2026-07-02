@@ -7,8 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>InterludeLauncher</AssemblyName>
     <RootNamespace>L2InterludeUpdater</RootNamespace>
-    <Product>Interlude Launcher</Product>
-    <Description>Installer, updater and launcher for the Interlude client.</Description>
+    <Product>L2 Hamburgo Launcher</Product>
+    <Description>Installer, updater and launcher for L2 Hamburgo.</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <Version>0.1.0</Version>
