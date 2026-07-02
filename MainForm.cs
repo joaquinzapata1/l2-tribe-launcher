@@ -743,12 +743,38 @@ internal sealed class MainForm : Form
             return;
         }
         var executable = Path.Combine(_clientPath.Text, "system-e", "l2.exe");
-        Process.Start(new ProcessStartInfo
+        var game = Process.Start(new ProcessStartInfo
         {
             FileName = executable,
             WorkingDirectory = Path.GetDirectoryName(executable)!,
             UseShellExecute = true
         });
+        StartDiscordPresence(game, Path.GetDirectoryName(executable)!);
+    }
+
+    private static void StartDiscordPresence(Process? game, string systemDirectory)
+    {
+        var companion = Path.Combine(systemDirectory, "L2HamburgoPresence.exe");
+        if (game is null || !File.Exists(companion))
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = companion,
+                Arguments = $"--pid {game.Id}",
+                WorkingDirectory = systemDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+        }
+        catch
+        {
+            // Discord presence is optional and must never block the game launch.
+        }
     }
 
     private void SetBusy(bool busy, string? message = null)
