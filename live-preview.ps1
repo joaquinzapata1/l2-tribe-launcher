@@ -7,6 +7,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
+$createdNew = $false
+$mutex = [System.Threading.Mutex]::new(
+    $true,
+    'Local\L2HamburgoLauncherLivePreview',
+    [ref]$createdNew)
+if (-not $createdNew) {
+    $mutex.Dispose()
+    throw 'Ya hay un Live Preview Launcher abierto. Usa la ventana existente.'
+}
 $project = Join-Path $repoRoot 'L2InterludeUpdater.csproj'
 $executable = Join-Path $repoRoot 'bin\Debug\net8.0-windows\win-x64\InterludeLauncher.exe'
 $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
@@ -99,4 +108,6 @@ try {
 }
 finally {
     Stop-Preview
+    $mutex.ReleaseMutex()
+    $mutex.Dispose()
 }

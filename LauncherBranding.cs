@@ -4,7 +4,6 @@ namespace L2InterludeUpdater;
 internal static class LauncherBranding
 {
     public const string WindowTitle = "L2 Hamburgo";
-    public const string HeaderSubtitle = "HAMBURGO  /  INTERLUDE";
     public const string BuildBadge = "PUBLIC TEST BUILD";
     public const string HeroEyebrow = "GRAND CRUSADE CLIENT  /  INTERLUDE";
     public const string HeroTitle = "Return to the classic age.";
@@ -13,8 +12,13 @@ internal static class LauncherBranding
 
     public const string LogoResource = "L2InterludeUpdater.Assets.l2-hamburgo-logo.png";
     public const string HeroResource = "L2InterludeUpdater.Assets.launcher-hero.jpg";
+    public const string DiscordIconResource = "L2InterludeUpdater.Assets.social.discord.png";
+    public const string InstagramIconResource = "L2InterludeUpdater.Assets.social.instagram.png";
+    public const string FacebookIconResource = "L2InterludeUpdater.Assets.social.facebook.png";
+    public const string TwitchIconResource = "L2InterludeUpdater.Assets.social.twitch.png";
 
     public const string WebsiteUrl = "https://l2hamburgo.surge.sh";
+    public const string DiscordServerId = "1514807146695495690";
     public const string DiscordUrl = "https://discord.gg/N9wfNUC";
     public const string InstagramUrl = "https://www.instagram.com/l2hamburgo/";
     public const string FacebookUrl = "https://www.facebook.com/L2-Hamburgo-815982251869041/";

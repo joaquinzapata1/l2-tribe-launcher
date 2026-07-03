@@ -36,6 +36,13 @@ internal sealed class MainForm : Form
     private readonly Button _cancelButton = new();
     private readonly Button _repairButton = new();
     private readonly Button _localManifestButton = new();
+    private readonly ToolTip _toolTips = new()
+    {
+        InitialDelay = 250,
+        ReshowDelay = 100,
+        AutoPopDelay = 4000,
+        ShowAlways = true
+    };
     private readonly GitHubReleaseClient _releaseClient = new();
     private readonly ContentInstaller _contentInstaller = new();
     private ContentReleaseInfo? _latestRelease;
@@ -64,6 +71,7 @@ internal sealed class MainForm : Form
             _operation?.Dispose();
             _releaseClient.Dispose();
             _contentInstaller.Dispose();
+            _toolTips.Dispose();
         };
     }
 
@@ -77,7 +85,7 @@ internal sealed class MainForm : Form
             RowCount = 3,
             Padding = new Padding(1)
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 178));
         Controls.Add(root);
@@ -87,7 +95,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             BackColor = Canvas,
             ColumnCount = 2,
-            Padding = new Padding(36, 16, 36, 8)
+            Padding = new Padding(36, 10, 36, 8)
         };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -98,20 +106,9 @@ internal sealed class MainForm : Form
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent,
             Dock = DockStyle.Left,
-            Width = 205,
+            Width = 220,
             Margin = new Padding(0)
         });
-        var brandSubtitle = new Label
-        {
-            Text = LauncherBranding.HeaderSubtitle,
-            ForeColor = Gold,
-            BackColor = Color.Transparent,
-            Font = new Font("Bahnschrift SemiBold", 7.5f),
-            AutoSize = true,
-            Location = new Point(57, 42)
-        };
-        brand.Controls.Add(brandSubtitle);
-        brandSubtitle.BringToFront();
         brand.MouseDown += DragWindow;
         header.Controls.Add(brand, 0, 0);
         var buildBadge = new Label
@@ -133,6 +130,22 @@ internal sealed class MainForm : Form
             WrapContents = false,
             Margin = new Padding(0)
         };
+        windowTools.Controls.Add(SocialButton(
+            "Discord",
+            LauncherBranding.DiscordIconResource,
+            LauncherBranding.DiscordUrl));
+        windowTools.Controls.Add(SocialButton(
+            "Instagram",
+            LauncherBranding.InstagramIconResource,
+            LauncherBranding.InstagramUrl));
+        windowTools.Controls.Add(SocialButton(
+            "Facebook",
+            LauncherBranding.FacebookIconResource,
+            LauncherBranding.FacebookUrl));
+        windowTools.Controls.Add(SocialButton(
+            "Twitch",
+            LauncherBranding.TwitchIconResource,
+            LauncherBranding.TwitchUrl));
         windowTools.Controls.Add(buildBadge);
         var minimizeButton = WindowButton("_", (_, _) => WindowState = FormWindowState.Minimized);
         var closeButton = WindowButton("X", (_, _) => CloseLauncher());
@@ -414,6 +427,54 @@ internal sealed class MainForm : Form
         button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
         button.Click += onClick;
         return button;
+    }
+
+    private Button SocialButton(string label, string iconResource, string url)
+    {
+        var icon = LoadEmbeddedImage(iconResource);
+        var button = new Button
+        {
+            Text = "",
+            Image = icon,
+            ImageAlign = ContentAlignment.MiddleCenter,
+            AutoSize = false,
+            Width = 34,
+            Height = 30,
+            Padding = new Padding(0),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Canvas,
+            Margin = new Padding(2, 5, 2, 0),
+            Cursor = Cursors.Hand,
+            TabStop = false,
+            AccessibleName = $"Abrir {label} de L2 Hamburgo"
+        };
+        button.FlatAppearance.BorderSize = 0;
+        button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
+        button.FlatAppearance.MouseDownBackColor = Surface;
+        button.Click += (_, _) => OpenExternalUrl(url);
+        button.Disposed += (_, _) => icon.Dispose();
+        _toolTips.SetToolTip(button, label);
+        return button;
+    }
+
+    private static void OpenExternalUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show(
+                $"No se pudo abrir el link.\n\n{error.Message}",
+                "L2 Hamburgo",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
     }
 
     private void DragWindow(object? sender, MouseEventArgs eventArgs)

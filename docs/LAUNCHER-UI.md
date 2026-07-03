@@ -35,6 +35,8 @@ Editar `LauncherBranding.cs`:
 - `HeroTitle`, `HeroDescription` y textos de cabecera: copy visible.
 - `WebsiteUrl`, `DiscordUrl`, `InstagramUrl`, `FacebookUrl` y `TwitchUrl`:
   destinos oficiales para la barra de redes.
+- `DiscordServerId`: guild ID usado por futuras integraciones de Discord; el
+  boton visible usa `DiscordUrl` para que tambien puedan entrar usuarios nuevos.
 
 Los colores aceptan hexadecimal CSS como `#EBAA39`.
 
