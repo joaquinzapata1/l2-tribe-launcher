@@ -71,6 +71,8 @@ hermano `l2classic-interlude-custom`.
 - repara archivos faltantes o corruptos;
 - instala una copia persistente del launcher y su acceso directo;
 - inicia `system-e/l2.exe` y el companion de Discord.
+- consulta actualizaciones automaticamente al abrir;
+- ofrece interfaz en espanol, ingles y portugues.
 
 ## Repositorios
 

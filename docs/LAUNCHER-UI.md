@@ -32,7 +32,6 @@ Editar `LauncherBranding.cs`:
 - `Canvas`, `Surface` y `SurfaceRaised`: fondos.
 - `Accent`: CTA principal, progreso y detalles destacados.
 - `Text` y `MutedText`: jerarquia tipografica.
-- `HeroTitle`, `HeroDescription` y textos de cabecera: copy visible.
 - `WebsiteUrl`, `DiscordUrl`, `InstagramUrl`, `FacebookUrl` y `TwitchUrl`:
   destinos oficiales para la barra de redes.
 - `DiscordServerId`: guild ID usado por futuras integraciones de Discord; el
@@ -55,8 +54,15 @@ dejar espacio visual oscuro donde aparezca el texto.
 Editar `BuildLayout()` en `MainForm.cs` para mover bloques o cambiar tamanos:
 
 1. `header`: logo, redes, estado de build y controles de ventana.
-2. `hero`: imagen, copy y CTA dinamico Instalar/Actualizar/Jugar.
-3. `footer`: carpeta, progreso y acciones secundarias.
+2. `hero`: imagen, version y CTA dinamico Instalar/Actualizar/Jugar.
+3. `footer`: progreso y menu secundario `...`.
+
+El selector `ES / EN / PT` usa `LauncherLocalization.cs`. Los textos visibles
+deben agregarse ahi en los tres idiomas, no directamente en `MainForm.cs`.
+
+La pantalla principal mantiene un solo CTA dinamico. Elegir carpeta, reparar e
+instalar un manifiesto local viven en el menu `...`; la consulta de updates se
+ejecuta automaticamente al abrir el launcher.
 
 No hace falta tocar `ContentInstaller.cs`, `PackageInstaller.cs` ni
 `GitHubReleaseClient.cs` para trabajar el aspecto visual.

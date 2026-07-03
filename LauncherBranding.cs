@@ -4,11 +4,6 @@ namespace L2InterludeUpdater;
 internal static class LauncherBranding
 {
     public const string WindowTitle = "L2 Hamburgo";
-    public const string BuildBadge = "PUBLIC TEST BUILD";
-    public const string HeroEyebrow = "GRAND CRUSADE CLIENT  /  INTERLUDE";
-    public const string HeroTitle = "Return to the classic age.";
-    public const string HeroDescription =
-        "Instala, actualiza y repara el cliente completo desde un solo lugar.";
 
     public const string LogoResource = "L2InterludeUpdater.Assets.l2-hamburgo-logo.png";
     public const string HeroResource = "L2InterludeUpdater.Assets.launcher-hero.jpg";

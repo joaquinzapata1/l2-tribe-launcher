@@ -48,6 +48,7 @@ internal sealed class InstalledState
 internal sealed class UpdaterSettings
 {
     public string ClientDirectory { get; set; } = "";
+    public string Language { get; set; } = "ES";
 }
 
 internal sealed record InstallProgress(int Percent, string Message);

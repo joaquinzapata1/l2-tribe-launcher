@@ -25,17 +25,19 @@ internal sealed class MainForm : Form
     private static readonly Color Muted = LauncherBranding.MutedText;
 
     private readonly TextBox _clientPath = new();
-    private readonly Label _installedVersion = new();
+    private readonly Label _versionCaption = new();
     private readonly Label _availableVersion = new();
     private readonly Label _status = new();
-    private readonly Label _releaseNotes = new();
     private readonly ProgressBar _progress = new();
-    private readonly Button _browseButton = new();
-    private readonly Button _checkButton = new();
     private readonly Button _updateButton = new();
     private readonly Button _cancelButton = new();
-    private readonly Button _repairButton = new();
-    private readonly Button _localManifestButton = new();
+    private readonly Button _settingsButton = new();
+    private readonly Button _languageButton = new();
+    private readonly ContextMenuStrip _languageMenu = new();
+    private readonly ContextMenuStrip _settingsMenu = new();
+    private readonly ToolStripMenuItem _chooseFolderMenuItem = new();
+    private readonly ToolStripMenuItem _repairMenuItem = new();
+    private readonly ToolStripMenuItem _manualInstallMenuItem = new();
     private readonly ToolTip _toolTips = new()
     {
         InitialDelay = 250,
@@ -47,13 +49,16 @@ internal sealed class MainForm : Form
     private readonly ContentInstaller _contentInstaller = new();
     private ContentReleaseInfo? _latestRelease;
     private CancellationTokenSource? _operation;
+    private LauncherLanguage _language = LauncherLanguage.Spanish;
+    private bool _loadingSettings;
+    private LauncherStrings Strings => LauncherLocalization.For(_language);
 
     public MainForm()
     {
         Text = LauncherBranding.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(900, 640);
-        Size = new Size(1000, 680);
+        MinimumSize = new Size(900, 420);
+        Size = new Size(1000, 440);
         FormBorderStyle = FormBorderStyle.None;
         MaximizeBox = false;
         BackColor = Canvas;
@@ -85,9 +90,9 @@ internal sealed class MainForm : Form
             RowCount = 3,
             Padding = new Padding(1)
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 178));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
         Controls.Add(root);
 
         var header = new TableLayoutPanel
@@ -95,7 +100,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             BackColor = Canvas,
             ColumnCount = 2,
-            Padding = new Padding(36, 10, 36, 8)
+            Padding = new Padding(36, 8, 36, 6)
         };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -103,25 +108,14 @@ internal sealed class MainForm : Form
         brand.Controls.Add(new PictureBox
         {
             Image = LoadEmbeddedImage(LauncherBranding.LogoResource),
-            SizeMode = PictureBoxSizeMode.Zoom,
+            SizeMode = PictureBoxSizeMode.StretchImage,
             BackColor = Color.Transparent,
             Dock = DockStyle.Left,
-            Width = 220,
-            Margin = new Padding(0)
+            Width = 198
         });
         brand.MouseDown += DragWindow;
         header.Controls.Add(brand, 0, 0);
-        var buildBadge = new Label
-        {
-            Text = LauncherBranding.BuildBadge,
-            AutoSize = true,
-            ForeColor = Muted,
-            BackColor = Surface,
-            Font = new Font("Bahnschrift SemiBold", 8.5f),
-            Padding = new Padding(12, 7, 12, 7),
-            Margin = new Padding(0, 8, 0, 0),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
-        };
+
         var windowTools = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -130,23 +124,18 @@ internal sealed class MainForm : Form
             WrapContents = false,
             Margin = new Padding(0)
         };
-        windowTools.Controls.Add(SocialButton(
-            "Discord",
-            LauncherBranding.DiscordIconResource,
-            LauncherBranding.DiscordUrl));
-        windowTools.Controls.Add(SocialButton(
-            "Instagram",
-            LauncherBranding.InstagramIconResource,
-            LauncherBranding.InstagramUrl));
-        windowTools.Controls.Add(SocialButton(
-            "Facebook",
-            LauncherBranding.FacebookIconResource,
-            LauncherBranding.FacebookUrl));
-        windowTools.Controls.Add(SocialButton(
-            "Twitch",
-            LauncherBranding.TwitchIconResource,
-            LauncherBranding.TwitchUrl));
-        windowTools.Controls.Add(buildBadge);
+        windowTools.Controls.Add(SocialButton("Discord", LauncherBranding.DiscordIconResource, LauncherBranding.DiscordUrl));
+        windowTools.Controls.Add(SocialButton("Instagram", LauncherBranding.InstagramIconResource, LauncherBranding.InstagramUrl));
+        windowTools.Controls.Add(SocialButton("Facebook", LauncherBranding.FacebookIconResource, LauncherBranding.FacebookUrl));
+        windowTools.Controls.Add(SocialButton("Twitch", LauncherBranding.TwitchIconResource, LauncherBranding.TwitchUrl));
+
+        StyleLanguageButton(_languageButton);
+        _languageButton.Click += (_, _) => _languageMenu.Show(
+            _languageButton,
+            new Point(0, _languageButton.Height));
+        windowTools.Controls.Add(_languageButton);
+        ConfigureLanguageMenu();
+
         var minimizeButton = WindowButton("_", (_, _) => WindowState = FormWindowState.Minimized);
         var closeButton = WindowButton("X", (_, _) => CloseLauncher());
         closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(126, 50, 45);
@@ -159,8 +148,8 @@ internal sealed class MainForm : Form
         var hero = new HeroPanel(LoadEmbeddedImage(LauncherBranding.HeroResource))
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(36, 4, 36, 18),
-            Padding = new Padding(30)
+            Margin = new Padding(36, 0, 36, 12),
+            Padding = new Padding(24)
         };
         var heroLayout = new TableLayoutPanel
         {
@@ -169,197 +158,150 @@ internal sealed class MainForm : Form
             ColumnCount = 2,
             RowCount = 1
         };
-        heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66));
-        heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
+        heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+        heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
         hero.Controls.Add(heroLayout);
 
-        var heroCopy = new TableLayoutPanel
+        var actionCard = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.Transparent,
-            RowCount = 4,
-            ColumnCount = 1,
-            Margin = new Padding(0, 0, 24, 0)
-        };
-        heroCopy.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heroCopy.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heroCopy.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heroCopy.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        heroCopy.Controls.Add(new Label
-        {
-            Text = LauncherBranding.HeroEyebrow,
-            ForeColor = Gold,
-            Font = new Font("Bahnschrift SemiBold", 9f),
-            AutoSize = true,
-            Margin = new Padding(0, 0, 0, 10)
-        }, 0, 0);
-        heroCopy.Controls.Add(new Label
-        {
-            Text = LauncherBranding.HeroTitle,
-            ForeColor = Color.White,
-            Font = new Font("Georgia", 27f, FontStyle.Bold),
-            AutoSize = true,
-            Margin = new Padding(0, 0, 0, 8)
-        }, 0, 1);
-        heroCopy.Controls.Add(new Label
-        {
-            Text = LauncherBranding.HeroDescription,
-            ForeColor = Color.FromArgb(218, 222, 220),
-            Font = new Font("Segoe UI", 10.5f),
-            AutoSize = true,
-            Margin = new Padding(1, 0, 0, 16)
-        }, 0, 2);
-        _releaseNotes.Dock = DockStyle.Fill;
-        _releaseNotes.BackColor = Color.Transparent;
-        _releaseNotes.ForeColor = Color.FromArgb(197, 204, 201);
-        _releaseNotes.Font = new Font("Segoe UI", 9.5f);
-        _releaseNotes.Text = "Buscando la ultima version disponible...";
-        _releaseNotes.AutoEllipsis = true;
-        _releaseNotes.TextAlign = ContentAlignment.TopLeft;
-        _releaseNotes.Margin = new Padding(0);
-        heroCopy.Controls.Add(_releaseNotes, 0, 3);
-        heroLayout.Controls.Add(heroCopy, 0, 0);
-
-        var heroAction = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(176, 21, 27, 31),
+            BackColor = Color.FromArgb(190, 19, 24, 28),
             Padding = new Padding(20),
             RowCount = 4,
-            ColumnCount = 2,
-            Margin = new Padding(0)
+            ColumnCount = 1
         };
-        heroAction.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        heroAction.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        heroAction.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heroAction.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heroAction.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        heroAction.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
-        heroAction.Controls.Add(VersionLabel("INSTALADA"), 0, 0);
-        heroAction.Controls.Add(VersionLabel("DISPONIBLE"), 1, 0);
-        ConfigureVersionValue(_installedVersion, "Sin instalar");
-        ConfigureVersionValue(_availableVersion, "Buscando...");
-        heroAction.Controls.Add(_installedVersion, 0, 1);
-        heroAction.Controls.Add(_availableVersion, 1, 1);
-        StylePrimaryButton(_updateButton, "INSTALAR CLIENTE");
+        actionCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        actionCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        actionCard.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        actionCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        _versionCaption.AutoSize = true;
+        _versionCaption.ForeColor = Muted;
+        _versionCaption.Font = new Font("Bahnschrift SemiBold", 8.5f);
+        _versionCaption.Margin = new Padding(0, 0, 0, 2);
+        actionCard.Controls.Add(_versionCaption, 0, 0);
+        _availableVersion.AutoSize = true;
+        _availableVersion.ForeColor = Cream;
+        _availableVersion.Font = new Font("Bahnschrift SemiBold", 18f);
+        _availableVersion.Margin = new Padding(0);
+        actionCard.Controls.Add(_availableVersion, 0, 1);
+        StylePrimaryButton(_updateButton, "");
         _updateButton.Dock = DockStyle.Fill;
         _updateButton.Enabled = false;
         _updateButton.Click += async (_, _) => await HandlePrimaryActionAsync();
-        heroAction.SetColumnSpan(_updateButton, 2);
-        heroAction.Controls.Add(_updateButton, 0, 3);
+        actionCard.Controls.Add(_updateButton, 0, 3);
         StyleCancelButton(_cancelButton);
         _cancelButton.Dock = DockStyle.Fill;
         _cancelButton.Visible = false;
         _cancelButton.Click += (_, _) => CancelCurrentOperation();
-        heroAction.SetColumnSpan(_cancelButton, 2);
-        heroAction.Controls.Add(_cancelButton, 0, 3);
-        heroLayout.Controls.Add(heroAction, 1, 0);
+        actionCard.Controls.Add(_cancelButton, 0, 3);
+        heroLayout.Controls.Add(actionCard, 1, 0);
         root.Controls.Add(hero, 0, 1);
 
         var footer = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = Surface,
-            Padding = new Padding(36, 16, 36, 18),
-            ColumnCount = 1,
-            RowCount = 3
+            Padding = new Padding(36, 8, 36, 10),
+            ColumnCount = 2,
+            RowCount = 1
         };
-        footer.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        footer.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
-        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-        var folderRow = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 3,
-            Margin = new Padding(0)
-        };
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        folderRow.Controls.Add(new Label
-        {
-            Text = "CARPETA DE JUEGO",
-            ForeColor = Muted,
-            Font = new Font("Bahnschrift SemiBold", 9f),
-            AutoSize = true,
-            Anchor = AnchorStyles.Left
-        }, 0, 0);
-        _clientPath.Dock = DockStyle.Fill;
-        _clientPath.Font = new Font("Segoe UI", 10f);
-        _clientPath.BackColor = SurfaceRaised;
-        _clientPath.ForeColor = Cream;
-        _clientPath.BorderStyle = BorderStyle.FixedSingle;
-        _clientPath.PlaceholderText = @"Elegi una carpeta, por ejemplo C:\Games\Interlude";
-        _clientPath.Margin = new Padding(0, 3, 10, 4);
-        _clientPath.TextChanged += (_, _) => RefreshInstalledVersion();
-        StyleSecondaryButton(_browseButton, "ELEGIR CARPETA");
-        _browseButton.Click += (_, _) => BrowseClientDirectory();
-        folderRow.Controls.Add(_clientPath, 1, 0);
-        folderRow.Controls.Add(_browseButton, 2, 0);
-        footer.Controls.Add(folderRow, 0, 0);
-
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
         var progressLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 2,
-            Margin = new Padding(0)
+            Margin = new Padding(0, 0, 12, 0)
         };
-        progressLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14));
-        _status.Text = "Listo.";
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 8));
         _status.AutoEllipsis = true;
         _status.Dock = DockStyle.Fill;
         _status.ForeColor = Muted;
         _status.Font = new Font("Segoe UI", 9f);
-        _status.Margin = new Padding(0, 3, 0, 5);
+        _status.TextAlign = ContentAlignment.MiddleLeft;
         progressLayout.Controls.Add(_status, 0, 0);
         _progress.Dock = DockStyle.Fill;
         _progress.Style = ProgressBarStyle.Continuous;
         _progress.ForeColor = Gold;
         _progress.Margin = new Padding(0);
         progressLayout.Controls.Add(_progress, 0, 1);
-        footer.Controls.Add(progressLayout, 0, 1);
+        footer.Controls.Add(progressLayout, 0, 0);
 
-        var tools = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            Margin = new Padding(0, 8, 0, 0)
-        };
-        StyleSecondaryButton(_repairButton, "REPARAR");
-        _repairButton.Enabled = false;
-        _repairButton.Click += async (_, _) => await InstallLatestAsync(repair: true);
-        StyleSecondaryButton(_localManifestButton, "INSTALACION MANUAL");
-        _localManifestButton.Click += async (_, _) => await InstallLocalManifestAsync();
-        StyleSecondaryButton(_checkButton, "BUSCAR ACTUALIZACION");
-        _checkButton.Click += async (_, _) => await CheckForUpdatesAsync(showErrors: true);
-        tools.Controls.Add(_repairButton);
-        tools.Controls.Add(_localManifestButton);
-        tools.Controls.Add(_checkButton);
-        footer.Controls.Add(tools, 0, 2);
+        StyleSecondaryButton(_settingsButton, "...");
+        _settingsButton.AutoSize = false;
+        _settingsButton.Text = "\u22EE";
+        _settingsButton.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
+        _settingsButton.TextAlign = ContentAlignment.MiddleCenter;
+        _settingsButton.Dock = DockStyle.Fill;
+        _settingsButton.Margin = new Padding(6, 3, 0, 3);
+        _settingsButton.Click += (_, _) => _settingsMenu.Show(
+            _settingsButton,
+            new Point(0, _settingsButton.Height));
+        footer.Controls.Add(_settingsButton, 1, 0);
+        ConfigureSettingsMenu();
         root.Controls.Add(footer, 0, 2);
     }
 
-    private static Label VersionLabel(string text) => new()
-    {
-        Text = text,
-        AutoSize = true,
-        ForeColor = Muted,
-        Font = new Font("Bahnschrift SemiBold", 8.5f),
-        Margin = new Padding(0, 0, 0, 2)
-    };
 
-    private static void ConfigureVersionValue(Label label, string text)
+    private void ConfigureSettingsMenu()
     {
-        label.Text = text;
-        label.AutoSize = true;
-        label.ForeColor = Cream;
-        label.Font = new Font("Bahnschrift SemiBold", 14f);
-        label.Margin = new Padding(0);
+        _settingsMenu.BackColor = Surface;
+        _settingsMenu.ForeColor = Cream;
+        _settingsMenu.ShowImageMargin = false;
+        _chooseFolderMenuItem.Click += (_, _) => BrowseClientDirectory();
+        _repairMenuItem.Click += async (_, _) => await InstallLatestAsync(repair: true);
+        _manualInstallMenuItem.Click += async (_, _) => await InstallLocalManifestAsync();
+        _settingsMenu.Items.AddRange([
+            _chooseFolderMenuItem,
+            _repairMenuItem,
+            new ToolStripSeparator(),
+            _manualInstallMenuItem
+        ]);
+    }
+
+    private void ConfigureLanguageMenu()
+    {
+        _languageMenu.BackColor = Surface;
+        _languageMenu.ForeColor = Cream;
+        _languageMenu.ShowImageMargin = false;
+        foreach (var language in Enum.GetValues<LauncherLanguage>())
+        {
+            var item = new ToolStripMenuItem(LauncherLocalization.Code(language));
+            item.Click += (_, _) => ChangeLanguage(language);
+            _languageMenu.Items.Add(item);
+        }
+    }
+
+    private void ChangeLanguage(LauncherLanguage language)
+    {
+        _language = language;
+        ApplyLanguage();
+        if (!_loadingSettings)
+        {
+            SaveSettings();
+        }
+    }
+
+    private void ApplyLanguage()
+    {
+        _versionCaption.Text = Strings.Version;
+        _languageButton.Text = LauncherLocalization.Code(_language);
+        _cancelButton.Text = Strings.Cancel;
+        _chooseFolderMenuItem.Text = Strings.ChooseFolder;
+        _repairMenuItem.Text = Strings.Repair;
+        _manualInstallMenuItem.Text = Strings.ManualInstall;
+        _toolTips.SetToolTip(_settingsButton, Strings.ChooseFolder);
+        if (string.IsNullOrWhiteSpace(_availableVersion.Text))
+        {
+            _availableVersion.Text = Strings.Checking;
+        }
+        if (_latestRelease is null && _operation is null)
+        {
+            _status.Text = Strings.Ready;
+        }
+        RefreshInstalledVersion();
     }
 
     private static void StylePrimaryButton(Button button, string text)
@@ -392,6 +334,21 @@ internal sealed class MainForm : Form
         button.ForeColor = Cream;
         button.Font = new Font("Bahnschrift SemiBold", 8.5f);
         button.Margin = new Padding(8, 0, 0, 0);
+    }
+
+    private static void StyleLanguageButton(Button button)
+    {
+        button.Width = 48;
+        button.Height = 30;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 0;
+        button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
+        button.BackColor = Surface;
+        button.ForeColor = Cream;
+        button.Font = new Font("Bahnschrift SemiBold", 8.5f);
+        button.Margin = new Padding(8, 5, 2, 0);
+        button.Cursor = Cursors.Hand;
+        button.TabStop = false;
     }
 
     private static void StyleCancelButton(Button button)
@@ -493,8 +450,8 @@ internal sealed class MainForm : Form
         {
             MessageBox.Show(
                 this,
-                "Cancela la operacion actual antes de cerrar el launcher.",
-                "Operacion en curso",
+                Strings.OperationInProgress,
+                Strings.OperationInProgressTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             return;
@@ -505,30 +462,47 @@ internal sealed class MainForm : Form
     private void LoadSettings()
     {
         var settings = SettingsStore.Load();
-        if (!string.IsNullOrWhiteSpace(settings.ClientDirectory))
+        _loadingSettings = true;
+        try
         {
-            _clientPath.Text = settings.ClientDirectory;
-            return;
+            _language = LauncherLocalization.Parse(settings.Language);
+            if (!string.IsNullOrWhiteSpace(settings.ClientDirectory))
+            {
+                _clientPath.Text = settings.ClientDirectory;
+            }
+            else
+            {
+                var executableDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+                _clientPath.Text = File.Exists(Path.Combine(executableDirectory, "system-e", "l2.exe"))
+                    ? executableDirectory
+                    : string.Empty;
+            }
+            ApplyLanguage();
         }
-
-        var executableDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
-        _clientPath.Text = File.Exists(Path.Combine(executableDirectory, "system-e", "l2.exe"))
-            ? executableDirectory
-            : string.Empty;
+        finally
+        {
+            _loadingSettings = false;
+        }
     }
+
+    private void SaveSettings() => SettingsStore.Save(new UpdaterSettings
+    {
+        ClientDirectory = _clientPath.Text,
+        Language = LauncherLocalization.Code(_language)
+    });
 
     private bool BrowseClientDirectory()
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Elegi donde instalar el cliente completo",
+            Description = Strings.FolderDialog,
             ShowNewFolderButton = true,
             SelectedPath = Directory.Exists(_clientPath.Text) ? _clientPath.Text : ""
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             _clientPath.Text = dialog.SelectedPath;
-            SettingsStore.Save(new UpdaterSettings { ClientDirectory = dialog.SelectedPath });
+            SaveSettings();
             return true;
         }
         return false;
@@ -544,23 +518,19 @@ internal sealed class MainForm : Form
         try
         {
             _operation = new CancellationTokenSource();
-            SetBusy(true, "Buscando la ultima version del cliente...");
+            SetBusy(true, Strings.Checking);
             _latestRelease = await _releaseClient.GetLatestContentAsync(_operation.Token);
             _availableVersion.Text = _latestRelease.Version;
-            _releaseNotes.Text = string.IsNullOrWhiteSpace(_latestRelease.Notes)
-                ? _latestRelease.Name
-                : _latestRelease.Notes;
-            _status.Text = "Cliente disponible. Podes instalar, actualizar o reparar.";
+            _status.Text = Strings.ClientAvailable;
         }
         catch (OperationCanceledException)
         {
-            _status.Text = "Busqueda cancelada.";
+            _status.Text = Strings.SearchCanceled;
         }
         catch (Exception error)
         {
             _latestRelease = null;
-            _availableVersion.Text = "Sin release";
-            _releaseNotes.Text = "No se pudo consultar la release publica.";
+            _availableVersion.Text = Strings.NoRelease;
             _status.Text = error.Message;
             if (showErrors)
             {
@@ -616,7 +586,7 @@ internal sealed class MainForm : Form
         try
         {
             _operation = new CancellationTokenSource();
-            SetBusy(true, repair ? "Preparando reparacion..." : "Preparando cliente...");
+            SetBusy(true, repair ? Strings.PreparingRepair : Strings.PreparingClient);
             var checksum = await _releaseClient.DownloadChecksumAsync(
                 _latestRelease.ManifestChecksumUrl,
                 _operation.Token);
@@ -626,14 +596,14 @@ internal sealed class MainForm : Form
                 percent => BeginInvoke(() =>
                 {
                     _progress.Value = Math.Clamp(percent, 0, 100);
-                    _status.Text = $"Descargando manifiesto... {percent}%";
+                    _status.Text = string.Format(Strings.DownloadingManifest, percent);
                 }),
                 _operation.Token);
             await InstallContentManifestAsync(manifestPath, checksum, repair, _operation.Token);
         }
         catch (OperationCanceledException)
         {
-            _status.Text = "Operacion cancelada. No se dejaron cambios incompletos.";
+            _status.Text = Strings.OperationCanceled;
         }
         catch (Exception error)
         {
@@ -656,7 +626,7 @@ internal sealed class MainForm : Form
         }
         using var dialog = new OpenFileDialog
         {
-            Title = "Elegi un manifiesto de cliente",
+            Title = Strings.SelectManifest,
             Filter = "Client manifest (client-manifest.json)|client-manifest.json|JSON (*.json)|*.json",
             CheckFileExists = true
         };
@@ -668,12 +638,12 @@ internal sealed class MainForm : Form
         try
         {
             _operation = new CancellationTokenSource();
-            SetBusy(true, "Verificando manifiesto local...");
+            SetBusy(true, Strings.VerifyingManifest);
             await InstallContentManifestAsync(dialog.FileName, null, false, _operation.Token);
         }
         catch (OperationCanceledException)
         {
-            _status.Text = "Operacion cancelada. No se dejaron cambios incompletos.";
+            _status.Text = Strings.OperationCanceled;
         }
         catch (Exception error)
         {
@@ -712,16 +682,16 @@ internal sealed class MainForm : Form
         var launcherWarning = EnsureLauncherEntryPoint();
 
         var backupMessage = result.BackupDirectory is null
-            ? "No habia archivos anteriores que respaldar."
-            : $"Backup: {result.BackupDirectory}";
+            ? Strings.NoBackup
+            : string.Format(Strings.Backup, result.BackupDirectory);
         MessageBox.Show(
             this,
-            $"Cliente {result.ClientVersion} listo.\n\n" +
-            $"Archivos instalados: {result.InstalledFiles}\n" +
-            $"Paquetes descargados: {result.DownloadedPackages}\n" +
-            $"Borrados: {result.DeletedPaths}\n{backupMessage}" +
+            string.Format(Strings.ClientReady, result.ClientVersion) + "\n\n" +
+            string.Format(Strings.InstalledFiles, result.InstalledFiles) + "\n" +
+            string.Format(Strings.DownloadedPackages, result.DownloadedPackages) + "\n" +
+            string.Format(Strings.DeletedFiles, result.DeletedPaths) + $"\n{backupMessage}" +
             (launcherWarning is null ? "" : $"\n\n{launcherWarning}"),
-            "Cliente actualizado",
+            LauncherBranding.WindowTitle,
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
     }
@@ -737,13 +707,12 @@ internal sealed class MainForm : Form
                            state.ClientVersion,
                            _latestRelease.Version,
                            StringComparison.OrdinalIgnoreCase);
-        _installedVersion.Text = state?.ClientVersion ?? (clientInstalled ? "Detectado" : "Sin instalar");
         _updateButton.Text = !clientInstalled
-            ? "INSTALAR CLIENTE"
+            ? Strings.Install
             : upToDate || _latestRelease is null
-                ? "JUGAR"
-                : "ACTUALIZAR";
-        _repairButton.Enabled = state is not null && _latestRelease is not null && _operation is null;
+                ? Strings.Play
+                : Strings.Update;
+        _repairMenuItem.Enabled = state is not null && _latestRelease is not null && _operation is null;
         _updateButton.Enabled = _operation is null && (clientInstalled || _latestRelease is not null);
         RefreshPrimaryButtonColors();
     }
@@ -769,8 +738,8 @@ internal sealed class MainForm : Form
         {
             var answer = MessageBox.Show(
                 this,
-                "La carpeta no esta vacia. El launcher respaldara los archivos que deba reemplazar. Continuar?",
-                "Carpeta existente",
+                Strings.ExistingFolder,
+                Strings.ExistingFolderTitle,
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
             if (answer != DialogResult.Yes)
@@ -779,7 +748,7 @@ internal sealed class MainForm : Form
             }
         }
 
-        SettingsStore.Save(new UpdaterSettings { ClientDirectory = _clientPath.Text });
+        SaveSettings();
         return true;
     }
 
@@ -790,7 +759,7 @@ internal sealed class MainForm : Form
             return;
         }
         _cancelButton.Enabled = false;
-        _status.Text = "Cancelando...";
+        _status.Text = Strings.Canceling;
         _operation.Cancel();
     }
 
@@ -800,8 +769,8 @@ internal sealed class MainForm : Form
         {
             MessageBox.Show(
                 this,
-                "El cliente todavia no esta instalado.",
-                "Cliente no disponible",
+                Strings.ClientNotInstalled,
+                Strings.ClientUnavailable,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
             return;
@@ -831,7 +800,7 @@ internal sealed class MainForm : Form
         }
         catch (Exception error)
         {
-            return $"No se pudo crear el acceso directo de L2 Hamburgo: {error.Message}";
+            return string.Format(Strings.ShortcutError, error.Message);
         }
     }
 
@@ -862,17 +831,16 @@ internal sealed class MainForm : Form
 
     private void SetBusy(bool busy, string? message = null)
     {
-        _browseButton.Enabled = !busy;
-        _checkButton.Enabled = !busy;
-        _localManifestButton.Enabled = !busy;
+        _settingsButton.Enabled = !busy;
+        _chooseFolderMenuItem.Enabled = !busy;
+        _manualInstallMenuItem.Enabled = !busy;
         _cancelButton.Enabled = busy;
         _cancelButton.Visible = busy;
-        _repairButton.Enabled = !busy && _latestRelease is not null &&
-                                StateFiles.ReadContentManifest(_clientPath.Text) is not null;
+        _repairMenuItem.Enabled = !busy && _latestRelease is not null &&
+                                  StateFiles.ReadContentManifest(_clientPath.Text) is not null;
         _updateButton.Visible = !busy;
         _updateButton.Enabled = !busy && (IsClientInstalled() || _latestRelease is not null);
         RefreshPrimaryButtonColors();
-        _clientPath.ReadOnly = busy;
         if (busy)
         {
             _progress.Value = 0;
@@ -895,7 +863,7 @@ internal sealed class MainForm : Form
         MessageBox.Show(
             this,
             error.Message,
-            "No se pudo completar la operacion",
+            Strings.GenericErrorTitle,
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }
