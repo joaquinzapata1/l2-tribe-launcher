@@ -17,14 +17,24 @@ advertencia de editor desconocido durante esta etapa de pruebas.
 
 ## Abrir la UI para editarla
 
+Para trabajar con refresh automatico, hacer doble clic en:
+
+```text
+Live Preview Launcher.cmd
+```
+
+Cada vez que guardes un archivo de estilos, layout o imagen, el launcher se
+recompila y vuelve a abrir solo. La consola queda visible para mostrar errores.
+
+Para abrir una unica vez, hacer doble clic en:
+
 Hacer doble clic en:
 
 ```text
 Preview Launcher.cmd
 ```
 
-La ventana queda abierta como preview. Si algo falla, el CMD conserva el error
-en pantalla. Alternativamente:
+Si algo falla, el CMD conserva el error en pantalla. Alternativamente:
 
 ```powershell
 .\preview.ps1

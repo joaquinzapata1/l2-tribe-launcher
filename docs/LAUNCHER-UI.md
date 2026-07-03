@@ -4,7 +4,17 @@ El launcher usa Windows Forms y construye la interfaz por codigo. No tiene HTML
 ni un editor visual drag-and-drop. El branding esta separado de la logica para
 que puedas iterar sin tocar descargas, checksums o instalacion.
 
-## Preview rapido
+## Live preview
+
+Hacer doble clic en `Live Preview Launcher.cmd`. Mientras esa consola siga
+abierta, cada guardado en los archivos `.cs`, el proyecto o `Assets/` recompila
+y reinicia automaticamente la ventana de preview.
+
+WinForms no puede reacomodar de forma segura todos los controles existentes en
+memoria. Por eso el refresh reinicia solamente la ventana, normalmente en pocos
+segundos. Para un preview unico sin watcher, usar `Preview Launcher.cmd`.
+
+## Preview unico
 
 Hacer doble clic en `Preview Launcher.cmd`. El script compila y abre la ventana;
 si falla, deja el error visible. Desde terminal tambien podes ejecutar:
