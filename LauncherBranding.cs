@@ -4,6 +4,8 @@ namespace L2InterludeUpdater;
 internal static class LauncherBranding
 {
     public const string WindowTitle = "L2 Hamburgo";
+    public const string Chronicle = "INTERLUDE";
+    public const string Rate = "x30";
 
     public const string LogoResource = "L2InterludeUpdater.Assets.l2-hamburgo-logo.png";
     public const string HeroResource = "L2InterludeUpdater.Assets.launcher-hero.jpg";

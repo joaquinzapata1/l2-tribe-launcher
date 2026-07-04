@@ -27,11 +27,13 @@ internal sealed class MainForm : Form
     private readonly TextBox _clientPath = new();
     private readonly Label _versionCaption = new();
     private readonly Label _availableVersion = new();
+    private readonly Label _chronicleLabel = new();
+    private readonly Label _featuresLabel = new();
     private readonly Label _status = new();
     private readonly ProgressBar _progress = new();
-    private readonly Button _updateButton = new();
-    private readonly Button _cancelButton = new();
-    private readonly Button _settingsButton = new();
+    private readonly RoundedButton _updateButton = new();
+    private readonly RoundedButton _cancelButton = new();
+    private readonly RoundedButton _settingsButton = new();
     private readonly Button _languageButton = new();
     private readonly ContextMenuStrip _languageMenu = new();
     private readonly ContextMenuStrip _settingsMenu = new();
@@ -162,6 +164,31 @@ internal sealed class MainForm : Form
         heroLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
         hero.Controls.Add(heroLayout);
 
+        var heroIdentity = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(10, 0, 28, 0)
+        };
+        heroIdentity.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        heroIdentity.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heroIdentity.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _chronicleLabel.AutoSize = true;
+        _chronicleLabel.ForeColor = Cream;
+        _chronicleLabel.BackColor = Color.Transparent;
+        _chronicleLabel.Font = new Font("Bahnschrift SemiBold", 25f);
+        _chronicleLabel.Margin = new Padding(0, 0, 0, 6);
+        heroIdentity.Controls.Add(_chronicleLabel, 0, 1);
+        _featuresLabel.AutoSize = true;
+        _featuresLabel.ForeColor = Gold;
+        _featuresLabel.BackColor = Color.Transparent;
+        _featuresLabel.Font = new Font("Bahnschrift SemiBold", 8.5f);
+        _featuresLabel.Margin = new Padding(1, 0, 0, 8);
+        heroIdentity.Controls.Add(_featuresLabel, 0, 2);
+        heroLayout.Controls.Add(heroIdentity, 0, 0);
+
         var actionCard = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -206,7 +233,7 @@ internal sealed class MainForm : Form
             RowCount = 1
         };
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 126));
         var progressLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -229,10 +256,10 @@ internal sealed class MainForm : Form
         progressLayout.Controls.Add(_progress, 0, 1);
         footer.Controls.Add(progressLayout, 0, 0);
 
-        StyleSecondaryButton(_settingsButton, "...");
+        StyleSecondaryButton(_settingsButton, "");
         _settingsButton.AutoSize = false;
-        _settingsButton.Text = "\u22EE";
-        _settingsButton.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
+        _settingsButton.CornerRadius = 10;
+        _settingsButton.Font = new Font("Bahnschrift SemiBold", 8.5f);
         _settingsButton.TextAlign = ContentAlignment.MiddleCenter;
         _settingsButton.Dock = DockStyle.Fill;
         _settingsButton.Margin = new Padding(6, 3, 0, 3);
@@ -289,6 +316,12 @@ internal sealed class MainForm : Form
         _versionCaption.Text = Strings.Version;
         _languageButton.Text = LauncherLocalization.Code(_language);
         _cancelButton.Text = Strings.Cancel;
+        _chronicleLabel.Text = string.Format(
+            Strings.Chronicle,
+            LauncherBranding.Chronicle,
+            LauncherBranding.Rate);
+        _featuresLabel.Text = Strings.Features;
+        _settingsButton.Text = Strings.Options;
         _chooseFolderMenuItem.Text = Strings.ChooseFolder;
         _repairMenuItem.Text = Strings.Repair;
         _manualInstallMenuItem.Text = Strings.ManualInstall;
@@ -318,6 +351,10 @@ internal sealed class MainForm : Form
         button.FlatAppearance.MouseDownBackColor = Color.FromArgb(210, 144, 35);
         button.Font = new Font("Bahnschrift SemiBold", 10f);
         button.Margin = new Padding(0);
+        if (button is RoundedButton rounded)
+        {
+            rounded.CornerRadius = 12;
+        }
     }
 
     private static void StyleSecondaryButton(Button button, string text)
@@ -364,6 +401,10 @@ internal sealed class MainForm : Form
         button.ForeColor = Color.White;
         button.Font = new Font("Bahnschrift SemiBold", 10f);
         button.Margin = new Padding(0);
+        if (button is RoundedButton rounded)
+        {
+            rounded.CornerRadius = 12;
+        }
     }
 
     private static Button WindowButton(string text, EventHandler onClick)
@@ -873,7 +914,68 @@ internal sealed class MainForm : Form
         using var stream = typeof(MainForm).Assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded launcher asset not found: {resourceName}");
         using var source = Image.FromStream(stream);
-        return new Bitmap(source);
+        var bitmap = new Bitmap(
+            source.Width,
+            source.Height,
+            System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        bitmap.SetResolution(96, 96);
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.CompositingMode = CompositingMode.SourceCopy;
+        graphics.DrawImage(source, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+        return bitmap;
+    }
+
+    private sealed class RoundedButton : Button
+    {
+        private int _cornerRadius = 10;
+
+        public int CornerRadius
+        {
+            get => _cornerRadius;
+            set
+            {
+                _cornerRadius = Math.Max(0, value);
+                UpdateRegion();
+                Invalidate();
+            }
+        }
+
+        protected override void OnResize(EventArgs eventArgs)
+        {
+            base.OnResize(eventArgs);
+            UpdateRegion();
+        }
+
+        private void UpdateRegion()
+        {
+            if (Width <= 1 || Height <= 1)
+            {
+                return;
+            }
+            using var path = CreateRoundedRectangle(ClientRectangle, _cornerRadius);
+            var previous = Region;
+            Region = new Region(path);
+            previous?.Dispose();
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(Rectangle bounds, int radius)
+        {
+            var path = new GraphicsPath();
+            bounds.Width--;
+            bounds.Height--;
+            var diameter = Math.Min(radius * 2, Math.Min(bounds.Width, bounds.Height));
+            if (diameter <= 1)
+            {
+                path.AddRectangle(bounds);
+                return path;
+            }
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
     }
 
     private sealed class HeroPanel : Panel

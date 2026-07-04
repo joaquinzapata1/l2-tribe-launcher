@@ -16,6 +16,9 @@ internal sealed record LauncherStrings(
     string Update,
     string Play,
     string Cancel,
+    string Chronicle,
+    string Features,
+    string Options,
     string ChooseFolder,
     string Repair,
     string ManualInstall,
@@ -69,7 +72,8 @@ internal static class LauncherLocalization
 
     private static readonly LauncherStrings Spanish = new(
         "VERSION", "Buscando version...", "Sin release", "Listo.",
-        "INSTALAR", "ACTUALIZAR", "JUGAR", "CANCELAR",
+        "INSTALAR", "ACTUALIZAR", "INICIAR", "CANCELAR",
+        "{0} {1}", "REBIRTH / EQUIPO CUSTOM / QUESTS CUSTOM / BOSSES CLASICOS", "OPCIONES",
         "Elegir carpeta", "Reparar cliente", "Instalacion manual",
         "Elegi donde instalar el cliente", "Cliente listo.", "Busqueda cancelada.",
         "Preparando reparacion...", "Preparando cliente...", "Descargando manifiesto... {0}%",
@@ -85,7 +89,8 @@ internal static class LauncherLocalization
 
     private static readonly LauncherStrings English = new(
         "VERSION", "Checking version...", "No release", "Ready.",
-        "INSTALL", "UPDATE", "PLAY", "CANCEL",
+        "INSTALL", "UPDATE", "LAUNCH", "CANCEL",
+        "{0} {1}", "REBIRTH / CUSTOM GEAR / CUSTOM QUESTS / CLASSIC BOSSES", "OPTIONS",
         "Choose folder", "Repair client", "Manual install",
         "Choose where to install the client", "Client ready.", "Update check canceled.",
         "Preparing repair...", "Preparing client...", "Downloading manifest... {0}%",
@@ -101,7 +106,8 @@ internal static class LauncherLocalization
 
     private static readonly LauncherStrings Portuguese = new(
         "VERSAO", "Buscando versao...", "Sem release", "Pronto.",
-        "INSTALAR", "ATUALIZAR", "JOGAR", "CANCELAR",
+        "INSTALAR", "ATUALIZAR", "INICIAR", "CANCELAR",
+        "{0} {1}", "REBIRTH / EQUIPAMENTO CUSTOM / QUESTS CUSTOM / BOSSES CLASSICOS", "OPCOES",
         "Escolher pasta", "Reparar cliente", "Instalacao manual",
         "Escolha onde instalar o cliente", "Cliente pronto.", "Busca cancelada.",
         "Preparando reparo...", "Preparando cliente...", "Baixando manifesto... {0}%",

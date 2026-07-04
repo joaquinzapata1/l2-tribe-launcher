@@ -32,6 +32,7 @@ Editar `LauncherBranding.cs`:
 - `Canvas`, `Surface` y `SurfaceRaised`: fondos.
 - `Accent`: CTA principal, progreso y detalles destacados.
 - `Text` y `MutedText`: jerarquia tipografica.
+- `Chronicle` y `Rate`: cronica y rates visibles en el hero.
 - `WebsiteUrl`, `DiscordUrl`, `InstagramUrl`, `FacebookUrl` y `TwitchUrl`:
   destinos oficiales para la barra de redes.
 - `DiscordServerId`: guild ID usado por futuras integraciones de Discord; el
