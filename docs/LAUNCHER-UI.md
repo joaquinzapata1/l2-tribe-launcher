@@ -61,9 +61,16 @@ Editar `BuildLayout()` en `MainForm.cs` para mover bloques o cambiar tamanos:
 El selector `ES / EN / PT` usa `LauncherLocalization.cs`. Los textos visibles
 deben agregarse ahi en los tres idiomas, no directamente en `MainForm.cs`.
 
-La pantalla principal mantiene un solo CTA dinamico. Elegir carpeta, reparar e
-instalar un manifiesto local viven en el menu `...`; la consulta de updates se
-ejecuta automaticamente al abrir el launcher.
+La pantalla principal mantiene un solo CTA dinamico. Cambiar carpeta y verificar
+archivos viven en `OPCIONES`; la consulta de updates se ejecuta automaticamente
+al abrir el launcher.
+
+El menu `OPCIONES` contiene solamente acciones para jugadores:
+
+- `Cambiar carpeta del cliente`: raiz que contiene `system-e`, o carpeta vacia
+  para una instalacion nueva.
+- `Verificar archivos`: compara el cliente instalado contra el manifiesto y
+  vuelve a descargar archivos faltantes o corruptos.
 
 No hace falta tocar `ContentInstaller.cs`, `PackageInstaller.cs` ni
 `GitHubReleaseClient.cs` para trabajar el aspecto visual.

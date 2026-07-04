@@ -30,7 +30,8 @@ internal sealed class MainForm : Form
     private readonly Label _chronicleLabel = new();
     private readonly Label _featuresLabel = new();
     private readonly Label _status = new();
-    private readonly ProgressBar _progress = new();
+    private readonly Label _clientPathLabel = new();
+    private readonly SlimProgressBar _progress = new();
     private readonly RoundedButton _updateButton = new();
     private readonly RoundedButton _cancelButton = new();
     private readonly RoundedButton _settingsButton = new();
@@ -39,7 +40,6 @@ internal sealed class MainForm : Form
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _chooseFolderMenuItem = new();
     private readonly ToolStripMenuItem _repairMenuItem = new();
-    private readonly ToolStripMenuItem _manualInstallMenuItem = new();
     private readonly ToolTip _toolTips = new()
     {
         InitialDelay = 250,
@@ -238,28 +238,37 @@ internal sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 2,
+            RowCount = 3,
             Margin = new Padding(0, 0, 12, 0)
         };
-        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 8));
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        progressLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 6));
         _status.AutoEllipsis = true;
         _status.Dock = DockStyle.Fill;
         _status.ForeColor = Muted;
         _status.Font = new Font("Segoe UI", 9f);
         _status.TextAlign = ContentAlignment.MiddleLeft;
         progressLayout.Controls.Add(_status, 0, 0);
+        _clientPathLabel.AutoEllipsis = true;
+        _clientPathLabel.Dock = DockStyle.Fill;
+        _clientPathLabel.ForeColor = Color.FromArgb(135, 142, 149);
+        _clientPathLabel.Font = new Font("Segoe UI", 8.5f);
+        _clientPathLabel.TextAlign = ContentAlignment.MiddleLeft;
+        progressLayout.Controls.Add(_clientPathLabel, 0, 1);
         _progress.Dock = DockStyle.Fill;
-        _progress.Style = ProgressBarStyle.Continuous;
-        _progress.ForeColor = Gold;
         _progress.Margin = new Padding(0);
-        progressLayout.Controls.Add(_progress, 0, 1);
+        _progress.Visible = false;
+        progressLayout.Controls.Add(_progress, 0, 2);
         footer.Controls.Add(progressLayout, 0, 0);
 
         StyleSecondaryButton(_settingsButton, "");
         _settingsButton.AutoSize = false;
         _settingsButton.CornerRadius = 10;
         _settingsButton.Font = new Font("Bahnschrift SemiBold", 8.5f);
+        _settingsButton.FlatAppearance.BorderSize = 0;
+        _settingsButton.BackColor = SurfaceRaised;
+        _settingsButton.ForeColor = Gold;
         _settingsButton.TextAlign = ContentAlignment.MiddleCenter;
         _settingsButton.Dock = DockStyle.Fill;
         _settingsButton.Margin = new Padding(6, 3, 0, 3);
@@ -279,12 +288,9 @@ internal sealed class MainForm : Form
         _settingsMenu.ShowImageMargin = false;
         _chooseFolderMenuItem.Click += (_, _) => BrowseClientDirectory();
         _repairMenuItem.Click += async (_, _) => await InstallLatestAsync(repair: true);
-        _manualInstallMenuItem.Click += async (_, _) => await InstallLocalManifestAsync();
         _settingsMenu.Items.AddRange([
             _chooseFolderMenuItem,
-            _repairMenuItem,
-            new ToolStripSeparator(),
-            _manualInstallMenuItem
+            _repairMenuItem
         ]);
     }
 
@@ -324,8 +330,8 @@ internal sealed class MainForm : Form
         _settingsButton.Text = Strings.Options;
         _chooseFolderMenuItem.Text = Strings.ChooseFolder;
         _repairMenuItem.Text = Strings.Repair;
-        _manualInstallMenuItem.Text = Strings.ManualInstall;
-        _toolTips.SetToolTip(_settingsButton, Strings.ChooseFolder);
+        _toolTips.SetToolTip(_settingsButton, Strings.Options);
+        RefreshClientPathLabel();
         if (string.IsNullOrWhiteSpace(_availableVersion.Text))
         {
             _availableVersion.Text = Strings.Checking;
@@ -544,6 +550,7 @@ internal sealed class MainForm : Form
         {
             _clientPath.Text = dialog.SelectedPath;
             SaveSettings();
+            RefreshInstalledVersion();
             return true;
         }
         return false;
@@ -658,45 +665,6 @@ internal sealed class MainForm : Form
         }
     }
 
-    private async Task InstallLocalManifestAsync()
-    {
-        if (!EnsureInstallDirectory())
-        {
-            return;
-        }
-        using var dialog = new OpenFileDialog
-        {
-            Title = Strings.SelectManifest,
-            Filter = "Client manifest (client-manifest.json)|client-manifest.json|JSON (*.json)|*.json",
-            CheckFileExists = true
-        };
-        if (dialog.ShowDialog(this) != DialogResult.OK)
-        {
-            return;
-        }
-
-        try
-        {
-            _operation = new CancellationTokenSource();
-            SetBusy(true, Strings.VerifyingManifest);
-            await InstallContentManifestAsync(dialog.FileName, null, false, _operation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            _status.Text = Strings.OperationCanceled;
-        }
-        catch (Exception error)
-        {
-            ShowError(error);
-        }
-        finally
-        {
-            _operation?.Dispose();
-            _operation = null;
-            SetBusy(false);
-            RefreshInstalledVersion();
-        }
-    }
 
     private async Task InstallContentManifestAsync(
         string manifestPath,
@@ -754,6 +722,7 @@ internal sealed class MainForm : Form
                 : Strings.Update;
         _repairMenuItem.Enabled = state is not null && _latestRelease is not null && _operation is null;
         _updateButton.Enabled = _operation is null && (clientInstalled || _latestRelease is not null);
+        RefreshClientPathLabel();
         if (_operation is null)
         {
             _status.Text = !clientInstalled
@@ -881,7 +850,6 @@ internal sealed class MainForm : Form
     {
         _settingsButton.Enabled = !busy;
         _chooseFolderMenuItem.Enabled = !busy;
-        _manualInstallMenuItem.Enabled = !busy;
         _cancelButton.Enabled = busy;
         _cancelButton.Visible = busy;
         _repairMenuItem.Enabled = !busy && _latestRelease is not null &&
@@ -889,6 +857,7 @@ internal sealed class MainForm : Form
         _updateButton.Visible = !busy;
         _updateButton.Enabled = !busy && (IsClientInstalled() || _latestRelease is not null);
         RefreshPrimaryButtonColors();
+        _progress.Visible = busy;
         if (busy)
         {
             _progress.Value = 0;
@@ -897,6 +866,15 @@ internal sealed class MainForm : Form
         {
             _status.Text = message;
         }
+    }
+
+    private void RefreshClientPathLabel()
+    {
+        var path = string.IsNullOrWhiteSpace(_clientPath.Text)
+            ? Strings.NoFolderSelected
+            : _clientPath.Text;
+        _clientPathLabel.Text = string.Format(Strings.ClientFolder, path);
+        _toolTips.SetToolTip(_clientPathLabel, path);
     }
 
     private void RefreshPrimaryButtonColors()
@@ -930,6 +908,39 @@ internal sealed class MainForm : Form
         graphics.CompositingMode = CompositingMode.SourceCopy;
         graphics.DrawImage(source, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
         return bitmap;
+    }
+
+    private sealed class SlimProgressBar : Control
+    {
+        private int _value;
+
+        public SlimProgressBar()
+        {
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.ResizeRedraw, true);
+        }
+
+        public int Value
+        {
+            get => _value;
+            set
+            {
+                _value = Math.Clamp(value, 0, 100);
+                Invalidate();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs eventArgs)
+        {
+            eventArgs.Graphics.Clear(SurfaceRaised);
+            if (_value <= 0)
+            {
+                return;
+            }
+            var width = (int)Math.Round(ClientSize.Width * (_value / 100d));
+            using var brush = new SolidBrush(Gold);
+            eventArgs.Graphics.FillRectangle(brush, 0, 0, width, ClientSize.Height);
+        }
     }
 
     private sealed class RoundedButton : Button
