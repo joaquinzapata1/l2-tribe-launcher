@@ -3,14 +3,14 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal sealed record LauncherInstallResult(string LauncherPath, string ShortcutPath);
 
 internal static class LauncherInstallation
 {
-    public const string InstalledFileName = "L2 Hamburgo Launcher.exe";
-    public const string ShortcutFileName = "L2 Hamburgo.lnk";
+    public const string InstalledFileName = "L2 Tribe Launcher.exe";
+    public const string ShortcutFileName = "L2 Tribe.lnk";
 
     public static LauncherInstallResult EnsureInstalled(
         string clientDirectory,
@@ -78,7 +78,7 @@ internal static class LauncherInstallation
         {
             shellLink.SetPath(targetPath);
             shellLink.SetWorkingDirectory(workingDirectory);
-            shellLink.SetDescription("Abrir L2 Hamburgo");
+            shellLink.SetDescription("Abrir L2 Tribe");
             shellLink.SetIconLocation(iconPath, 0);
             shellLink.SetShowCmd(1);
             ((IPersistFile)shellLink).Save(shortcutPath, true);

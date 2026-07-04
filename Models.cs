@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal static class JsonDefaults
 {

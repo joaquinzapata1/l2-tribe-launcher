@@ -40,11 +40,11 @@ Editar `LauncherBranding.cs`:
 
 Los colores aceptan hexadecimal CSS como `#EBAA39`.
 
-## Logo y hero
+## Wordmark y hero
 
-Reemplazar, conservando los nombres:
+La marca del header se dibuja con texto desde `LauncherBranding.cs` mediante
+`BrandName` y `BrandTagline`; no depende de logos raster heredados.
 
-- `Assets/l2-hamburgo-logo.png`: logo transparente; actual 1920x716.
 - `Assets/launcher-hero.jpg`: hero actual 1920x1200, mostrado con recorte `cover`.
 
 Conviene mantener el hero entre 1600 y 2560 px de ancho, JPG calidad 85-90, y
@@ -54,7 +54,7 @@ dejar espacio visual oscuro donde aparezca el texto.
 
 Editar `BuildLayout()` en `MainForm.cs` para mover bloques o cambiar tamanos:
 
-1. `header`: logo, redes, estado de build y controles de ventana.
+1. `header`: wordmark, Discord, idioma y controles de ventana.
 2. `hero`: imagen, version y CTA dinamico Instalar/Actualizar/Jugar.
 3. `footer`: progreso y menu secundario `...`.
 
@@ -79,7 +79,7 @@ No hace falta tocar `ContentInstaller.cs`, `PackageInstaller.cs` ni
 
 - conservar un unico CTA fuerte: Instalar, Actualizar o Jugar;
 - mover Reparar, buscar updates y carpeta a un menu de configuracion;
-- usar una barra superior con Discord, Instagram, Facebook y Twitch;
+- usar una barra superior simple con Discord;
 - hacer que el hero ocupe la mayor parte de la ventana;
 - mantener contraste alto, bordes suaves y poco texto operativo;
 - usar una familia display para titulos y otra neutral para informacion.

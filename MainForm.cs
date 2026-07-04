@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal sealed class MainForm : Form
 {
@@ -106,15 +106,34 @@ internal sealed class MainForm : Form
         };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var brand = new Panel { Dock = DockStyle.Fill };
-        brand.Controls.Add(new PictureBox
+        var brand = new TableLayoutPanel
         {
-            Image = LoadEmbeddedImage(LauncherBranding.LogoResource),
-            SizeMode = PictureBoxSizeMode.CenterImage,
+            Dock = DockStyle.Fill,
             BackColor = Color.Transparent,
-            Dock = DockStyle.Left,
-            Width = 190
-        });
+            ColumnCount = 1,
+            RowCount = 2,
+            Padding = new Padding(12, 17, 0, 8)
+        };
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 68));
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 32));
+        brand.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = LauncherBranding.BrandName,
+            ForeColor = Gold,
+            Font = new Font("Bahnschrift SemiBold", 22f),
+            Margin = new Padding(0),
+            Anchor = AnchorStyles.Left | AnchorStyles.Bottom
+        }, 0, 0);
+        brand.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = LauncherBranding.BrandTagline,
+            ForeColor = Muted,
+            Font = new Font("Bahnschrift SemiBold", 7.5f),
+            Margin = new Padding(2, 0, 0, 0),
+            Anchor = AnchorStyles.Left | AnchorStyles.Top
+        }, 0, 1);
         brand.MouseDown += DragWindow;
         header.Controls.Add(brand, 0, 0);
 
@@ -127,9 +146,6 @@ internal sealed class MainForm : Form
             Margin = new Padding(0)
         };
         windowTools.Controls.Add(SocialButton("Discord", LauncherBranding.DiscordIconResource, LauncherBranding.DiscordUrl));
-        windowTools.Controls.Add(SocialButton("Instagram", LauncherBranding.InstagramIconResource, LauncherBranding.InstagramUrl));
-        windowTools.Controls.Add(SocialButton("Facebook", LauncherBranding.FacebookIconResource, LauncherBranding.FacebookUrl));
-        windowTools.Controls.Add(SocialButton("Twitch", LauncherBranding.TwitchIconResource, LauncherBranding.TwitchUrl));
 
         StyleLanguageButton(_languageButton);
         _languageButton.Click += (_, _) => _languageMenu.Show(
@@ -234,6 +250,7 @@ internal sealed class MainForm : Form
         };
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 126));
+        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var progressLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -264,18 +281,28 @@ internal sealed class MainForm : Form
 
         StyleSecondaryButton(_settingsButton, "");
         _settingsButton.AutoSize = false;
-        _settingsButton.CornerRadius = 10;
+        _settingsButton.CornerRadius = 4;
         _settingsButton.Font = new Font("Bahnschrift SemiBold", 8.5f);
         _settingsButton.FlatAppearance.BorderSize = 0;
         _settingsButton.BackColor = SurfaceRaised;
         _settingsButton.ForeColor = Gold;
         _settingsButton.TextAlign = ContentAlignment.MiddleCenter;
-        _settingsButton.Dock = DockStyle.Fill;
-        _settingsButton.Margin = new Padding(6, 3, 0, 3);
+        _settingsButton.Size = new Size(112, 36);
+        _settingsButton.Margin = new Padding(0);
         _settingsButton.Click += (_, _) => _settingsMenu.Show(
             _settingsButton,
             new Point(0, _settingsButton.Height));
-        footer.Controls.Add(_settingsButton, 1, 0);
+
+        var settingsPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(14, 0, 0, 0)
+        };
+        settingsPanel.Controls.Add(_settingsButton);
+        settingsPanel.Layout += (_, _) => _settingsButton.Location = new Point(
+            settingsPanel.ClientSize.Width - _settingsButton.Width,
+            Math.Max(0, (settingsPanel.ClientSize.Height - _settingsButton.Height) / 2));
+        footer.Controls.Add(settingsPanel, 1, 0);
         ConfigureSettingsMenu();
         root.Controls.Add(footer, 0, 2);
     }
@@ -450,7 +477,7 @@ internal sealed class MainForm : Form
             Margin = new Padding(2, 5, 2, 0),
             Cursor = Cursors.Hand,
             TabStop = false,
-            AccessibleName = $"Abrir {label} de L2 Hamburgo"
+            AccessibleName = $"Abrir {label} de L2 Tribe"
         };
         button.FlatAppearance.BorderSize = 0;
         button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
@@ -475,7 +502,7 @@ internal sealed class MainForm : Form
         {
             MessageBox.Show(
                 $"No se pudo abrir el link.\n\n{error.Message}",
-                "L2 Hamburgo",
+                LauncherBranding.WindowTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
         }
@@ -627,7 +654,7 @@ internal sealed class MainForm : Form
             return;
         }
 
-        var tempDirectory = Path.Combine(Path.GetTempPath(), "L2InterludeUpdater");
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "L2TribeLauncher");
         Directory.CreateDirectory(tempDirectory);
         var manifestPath = Path.Combine(tempDirectory, $"client-manifest-{_latestRelease.Version}.json");
         try
@@ -823,7 +850,7 @@ internal sealed class MainForm : Form
 
     private static void StartDiscordPresence(Process? game, string systemDirectory)
     {
-        var companion = Path.Combine(systemDirectory, "L2HamburgoPresence.exe");
+        var companion = Path.Combine(systemDirectory, "L2TribePresence.exe");
         if (game is null || !File.Exists(companion))
         {
             return;
@@ -1092,7 +1119,7 @@ internal sealed class MainForm : Form
     {
         private static readonly string DirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "L2InterludeUpdater");
+            "L2TribeLauncher");
         private static readonly string FilePath = Path.Combine(DirectoryPath, "settings.json");
 
         public static UpdaterSettings Load()

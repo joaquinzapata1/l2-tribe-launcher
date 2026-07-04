@@ -1,19 +1,19 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal sealed class GitHubReleaseClient : IDisposable
 {
     public const string LatestReleaseApi =
-        "https://api.github.com/repos/joaquinzapata1/l2-client-updater/releases/latest";
+        "https://api.github.com/repos/joaquinzapata1/l2-tribe-launcher/releases/latest";
 
     private readonly HttpClient _httpClient = new();
 
     public GitHubReleaseClient()
     {
         _httpClient.DefaultRequestHeaders.UserAgent.Add(
-            new ProductInfoHeaderValue("L2InterludeUpdater", "0.1"));
+            new ProductInfoHeaderValue("L2TribeLauncher", "0.1"));
         _httpClient.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
     }
@@ -64,7 +64,7 @@ internal sealed class GitHubReleaseClient : IDisposable
     public async Task<ContentReleaseInfo> GetLatestContentAsync(CancellationToken cancellationToken)
     {
         const string releasesUrl =
-            "https://api.github.com/repos/joaquinzapata1/l2-client-updater/releases?per_page=30";
+            "https://api.github.com/repos/joaquinzapata1/l2-tribe-launcher/releases?per_page=30";
         using var response = await _httpClient.GetAsync(releasesUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
 

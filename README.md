@@ -1,15 +1,15 @@
-# L2 Hamburgo Launcher
+# L2 Tribe Launcher
 
 Codigo fuente y distribucion publica del instalador, updater y launcher de
-L2 Hamburgo para Windows.
+L2 Tribe para Windows.
 
 ## Descargar para jugar
 
-Abrir [Releases](https://github.com/joaquinzapata1/l2-client-updater/releases),
-elegir la ultima version y descargar solamente `InterludeLauncher.exe`.
+Abrir [Releases](https://github.com/joaquinzapata1/l2-tribe-launcher/releases),
+elegir la ultima version y descargar solamente `L2TribeLauncher.exe`.
 
 El launcher instala el cliente completo, aplica actualizaciones incrementales,
-repara archivos por SHA-256 y crea un acceso directo `L2 Hamburgo` en el
+repara archivos por SHA-256 y crea un acceso directo `L2 Tribe` en el
 escritorio. El boton Jugar inicia tambien Discord Rich Presence.
 
 El EXE todavia no esta firmado digitalmente; Windows puede mostrar una
@@ -52,13 +52,13 @@ La guia de colores, textos, assets y layout esta en
 Output:
 
 ```text
-build/win-x64/InterludeLauncher.exe
-build/win-x64/InterludeLauncher.exe.sha256
+build/win-x64/L2TribeLauncher.exe
+build/win-x64/L2TribeLauncher.exe.sha256
 ```
 
 El build es self-contained y no requiere .NET instalado en la PC del jugador.
 Para desarrollo, los scripts usan `dotnet` del PATH o el SDK local del repo
-hermano `l2classic-interlude-custom`.
+hermano `l2-tribe-server`.
 
 ## Funcionalidad
 
@@ -77,10 +77,10 @@ hermano `l2classic-interlude-custom`.
 ## Repositorios
 
 - Este repo es la fuente de verdad del launcher y su UI.
-- `joaquinzapata1/l2classic-interlude-custom` genera y publica los paquetes de
+- `joaquinzapata1/l2-tribe-server` genera y publica los paquetes de
   contenido que consume el launcher.
 
 ## Licencia y marca
 
-El codigo esta disponible bajo la licencia MIT. El nombre, logo y assets de
-L2 Hamburgo no se licencian para reutilizacion; ver `TRADEMARKS.md`.
+El codigo esta disponible bajo la licencia MIT. La identidad de L2 Tribe y los
+assets propios no se licencian para reutilizacion; ver `TRADEMARKS.md`.

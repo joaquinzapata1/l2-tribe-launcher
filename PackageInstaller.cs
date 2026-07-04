@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal sealed class PackageInstaller
 {

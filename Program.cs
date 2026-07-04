@@ -1,4 +1,4 @@
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal static class Program
 {
@@ -43,7 +43,7 @@ internal static class Program
         if (string.IsNullOrWhiteSpace(client))
         {
             Console.Error.WriteLine(
-                "Usage: InterludeLauncher.exe --install-launcher --client <client-dir> [--shortcut-dir <dir>]");
+                "Usage: L2TribeLauncher.exe --install-launcher --client <client-dir> [--shortcut-dir <dir>]");
             return 2;
         }
 
@@ -100,7 +100,7 @@ internal static class Program
 
         if (string.IsNullOrWhiteSpace(package) || string.IsNullOrWhiteSpace(client))
         {
-            Log("Usage: InterludeLauncher.exe --apply-package <patch.zip> --client <client-dir> [--sha256 <hash>] [--log <file>]");
+            Log("Usage: L2TribeLauncher.exe --apply-package <patch.zip> --client <client-dir> [--sha256 <hash>] [--log <file>]");
             return 2;
         }
 
@@ -174,7 +174,7 @@ internal static class Program
 
         if (string.IsNullOrWhiteSpace(manifest) || string.IsNullOrWhiteSpace(client))
         {
-            Log("Usage: InterludeLauncher.exe --install-content <client-manifest.json> --client <dir> [--manifest-sha256 <hash>] [--repair] [--log <file>]");
+            Log("Usage: L2TribeLauncher.exe --install-content <client-manifest.json> --client <dir> [--manifest-sha256 <hash>] [--repair] [--log <file>]");
             return 2;
         }
 

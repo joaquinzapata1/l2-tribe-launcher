@@ -4,7 +4,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal sealed class ContentInstaller : IDisposable
 {
@@ -13,7 +13,7 @@ internal sealed class ContentInstaller : IDisposable
     public ContentInstaller()
     {
         _httpClient.DefaultRequestHeaders.UserAgent.Add(
-            new ProductInfoHeaderValue("L2InterludeUpdater", "0.1"));
+            new ProductInfoHeaderValue("L2TribeLauncher", "0.1"));
     }
 
     public async Task<ContentInstallResult> InstallAsync(

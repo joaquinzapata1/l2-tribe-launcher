@@ -1,4 +1,4 @@
-namespace L2InterludeUpdater;
+namespace L2TribeLauncher;
 
 internal enum LauncherLanguage
 {
