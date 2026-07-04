@@ -22,6 +22,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\l2-hamburgo-logo.png" />
+    <EmbeddedResource Include="Assets\l2-hamburgo-logo-header.png" />
     <EmbeddedResource Include="Assets\launcher-hero.jpg" />
     <EmbeddedResource Include="Assets\social\*.png" />
   </ItemGroup>

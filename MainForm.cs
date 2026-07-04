@@ -59,8 +59,8 @@ internal sealed class MainForm : Form
     {
         Text = LauncherBranding.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(900, 420);
-        Size = new Size(1000, 440);
+        MinimumSize = new Size(900, 500);
+        ClientSize = new Size(1000, 520);
         FormBorderStyle = FormBorderStyle.None;
         MaximizeBox = false;
         BackColor = Canvas;
@@ -92,9 +92,9 @@ internal sealed class MainForm : Form
             RowCount = 3,
             Padding = new Padding(1)
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
         Controls.Add(root);
 
         var header = new TableLayoutPanel
@@ -110,10 +110,10 @@ internal sealed class MainForm : Form
         brand.Controls.Add(new PictureBox
         {
             Image = LoadEmbeddedImage(LauncherBranding.LogoResource),
-            SizeMode = PictureBoxSizeMode.StretchImage,
+            SizeMode = PictureBoxSizeMode.CenterImage,
             BackColor = Color.Transparent,
             Dock = DockStyle.Left,
-            Width = 198
+            Width = 190
         });
         brand.MouseDown += DragWindow;
         header.Controls.Add(brand, 0, 0);
@@ -228,7 +228,7 @@ internal sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = Surface,
-            Padding = new Padding(36, 8, 36, 10),
+            Padding = new Padding(36, 10, 36, 12),
             ColumnCount = 2,
             RowCount = 1
         };
@@ -562,7 +562,6 @@ internal sealed class MainForm : Form
             SetBusy(true, Strings.Checking);
             _latestRelease = await _releaseClient.GetLatestContentAsync(_operation.Token);
             _availableVersion.Text = _latestRelease.Version;
-            _status.Text = Strings.ClientAvailable;
         }
         catch (OperationCanceledException)
         {
@@ -755,6 +754,14 @@ internal sealed class MainForm : Form
                 : Strings.Update;
         _repairMenuItem.Enabled = state is not null && _latestRelease is not null && _operation is null;
         _updateButton.Enabled = _operation is null && (clientInstalled || _latestRelease is not null);
+        if (_operation is null)
+        {
+            _status.Text = !clientInstalled
+                ? Strings.ReadyToInstall
+                : upToDate || _latestRelease is null
+                    ? Strings.ReadyToPlay
+                    : Strings.UpdateAvailable;
+        }
         RefreshPrimaryButtonColors();
     }
 

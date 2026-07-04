@@ -7,7 +7,7 @@ internal static class LauncherBranding
     public const string Chronicle = "INTERLUDE";
     public const string Rate = "x30";
 
-    public const string LogoResource = "L2InterludeUpdater.Assets.l2-hamburgo-logo.png";
+    public const string LogoResource = "L2InterludeUpdater.Assets.l2-hamburgo-logo-header.png";
     public const string HeroResource = "L2InterludeUpdater.Assets.launcher-hero.jpg";
     public const string DiscordIconResource = "L2InterludeUpdater.Assets.social.discord.png";
     public const string InstagramIconResource = "L2InterludeUpdater.Assets.social.instagram.png";

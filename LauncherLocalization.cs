@@ -12,6 +12,9 @@ internal sealed record LauncherStrings(
     string Checking,
     string NoRelease,
     string Ready,
+    string ReadyToInstall,
+    string ReadyToPlay,
+    string UpdateAvailable,
     string Install,
     string Update,
     string Play,
@@ -23,7 +26,6 @@ internal sealed record LauncherStrings(
     string Repair,
     string ManualInstall,
     string FolderDialog,
-    string ClientAvailable,
     string SearchCanceled,
     string PreparingRepair,
     string PreparingClient,
@@ -72,10 +74,11 @@ internal static class LauncherLocalization
 
     private static readonly LauncherStrings Spanish = new(
         "VERSION", "Buscando version...", "Sin release", "Listo.",
+        "Listo para instalar.", "Listo para iniciar.", "Actualizacion disponible.",
         "INSTALAR", "ACTUALIZAR", "INICIAR", "CANCELAR",
         "{0} {1}", "REBIRTH / EQUIPO CUSTOM / QUESTS CUSTOM / BOSSES CLASICOS", "OPCIONES",
         "Elegir carpeta", "Reparar cliente", "Instalacion manual",
-        "Elegi donde instalar el cliente", "Cliente listo.", "Busqueda cancelada.",
+        "Elegi donde instalar el cliente", "Busqueda cancelada.",
         "Preparando reparacion...", "Preparando cliente...", "Descargando manifiesto... {0}%",
         "Operacion cancelada sin cambios incompletos.", "Elegi un manifiesto de cliente",
         "Verificando manifiesto local...", "Cliente {0} listo.",
@@ -89,10 +92,11 @@ internal static class LauncherLocalization
 
     private static readonly LauncherStrings English = new(
         "VERSION", "Checking version...", "No release", "Ready.",
+        "Ready to install.", "Ready to launch.", "Update available.",
         "INSTALL", "UPDATE", "LAUNCH", "CANCEL",
         "{0} {1}", "REBIRTH / CUSTOM GEAR / CUSTOM QUESTS / CLASSIC BOSSES", "OPTIONS",
         "Choose folder", "Repair client", "Manual install",
-        "Choose where to install the client", "Client ready.", "Update check canceled.",
+        "Choose where to install the client", "Update check canceled.",
         "Preparing repair...", "Preparing client...", "Downloading manifest... {0}%",
         "Operation canceled without incomplete changes.", "Choose a client manifest",
         "Verifying local manifest...", "Client {0} is ready.",
@@ -106,10 +110,11 @@ internal static class LauncherLocalization
 
     private static readonly LauncherStrings Portuguese = new(
         "VERSAO", "Buscando versao...", "Sem release", "Pronto.",
+        "Pronto para instalar.", "Pronto para iniciar.", "Atualizacao disponivel.",
         "INSTALAR", "ATUALIZAR", "INICIAR", "CANCELAR",
         "{0} {1}", "REBIRTH / EQUIPAMENTO CUSTOM / QUESTS CUSTOM / BOSSES CLASSICOS", "OPCOES",
         "Escolher pasta", "Reparar cliente", "Instalacao manual",
-        "Escolha onde instalar o cliente", "Cliente pronto.", "Busca cancelada.",
+        "Escolha onde instalar o cliente", "Busca cancelada.",
         "Preparando reparo...", "Preparando cliente...", "Baixando manifesto... {0}%",
         "Operacao cancelada sem alteracoes incompletas.", "Escolha um manifesto do cliente",
         "Verificando manifesto local...", "Cliente {0} pronto.",
