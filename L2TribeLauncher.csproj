@@ -10,6 +10,7 @@
     <Product>L2 Tribe Launcher</Product>
     <Description>Installer, updater and launcher for L2 Tribe.</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\favicon.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <Version>0.1.0</Version>
     <PublishSingleFile>true</PublishSingleFile>
@@ -22,6 +23,12 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\launcher-hero.jpg" />
+    <EmbeddedResource Include="Assets\l2tribe-logo.png" />
+    <EmbeddedResource Include="Assets\flags\ar.png" />
+    <EmbeddedResource Include="Assets\flags\br.png" />
+    <EmbeddedResource Include="Assets\flags\gb.png" />
     <EmbeddedResource Include="Assets\social\discord.png" />
+    <EmbeddedResource Include="Assets\social\facebook.png" />
+    <EmbeddedResource Include="Assets\favicon.ico" />
   </ItemGroup>
 </Project>

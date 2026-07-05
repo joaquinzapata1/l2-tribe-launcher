@@ -23,6 +23,8 @@ internal sealed class MainForm : Form
     private static readonly Color Gold = LauncherBranding.Accent;
     private static readonly Color Cream = LauncherBranding.Text;
     private static readonly Color Muted = LauncherBranding.MutedText;
+    private static readonly Icon AppIcon = new Icon(
+        typeof(MainForm).Assembly.GetManifestResourceStream("L2TribeLauncher.Assets.favicon.ico")!);
 
     private readonly TextBox _clientPath = new();
     private readonly Label _versionCaption = new();
@@ -36,7 +38,7 @@ internal sealed class MainForm : Form
     private readonly RoundedButton _cancelButton = new();
     private readonly RoundedButton _settingsButton = new();
     private readonly Button _languageButton = new();
-    private readonly ContextMenuStrip _languageMenu = new();
+    private readonly Panel _languagePanel = new();
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _chooseFolderMenuItem = new();
     private readonly ToolStripMenuItem _repairMenuItem = new();
@@ -49,6 +51,9 @@ internal sealed class MainForm : Form
     };
     private readonly GitHubReleaseClient _releaseClient = new();
     private readonly ContentInstaller _contentInstaller = new();
+    private readonly Image _arFlag = CreateMenuFlag(LoadEmbeddedImage(LauncherBranding.ArFlagResource));
+    private readonly Image _brFlag = CreateMenuFlag(LoadEmbeddedImage(LauncherBranding.BrFlagResource));
+    private readonly Image _gbFlag = CreateMenuFlag(LoadEmbeddedImage(LauncherBranding.GbFlagResource));
     private ContentReleaseInfo? _latestRelease;
     private CancellationTokenSource? _operation;
     private LauncherLanguage _language = LauncherLanguage.Spanish;
@@ -67,6 +72,7 @@ internal sealed class MainForm : Form
         ForeColor = Cream;
         Font = new Font("Segoe UI", 9.5f);
         AutoScaleMode = AutoScaleMode.Dpi;
+        Icon = AppIcon;
 
         BuildLayout();
         LoadSettings();
@@ -78,6 +84,9 @@ internal sealed class MainForm : Form
             _operation?.Dispose();
             _releaseClient.Dispose();
             _contentInstaller.Dispose();
+            _arFlag.Dispose();
+            _brFlag.Dispose();
+            _gbFlag.Dispose();
             _toolTips.Dispose();
         };
     }
@@ -106,34 +115,22 @@ internal sealed class MainForm : Form
         };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var brand = new TableLayoutPanel
+        var brand = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.Transparent,
-            ColumnCount = 1,
-            RowCount = 2,
-            Padding = new Padding(12, 17, 0, 8)
+            BackColor = Color.Transparent
         };
-        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 68));
-        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 32));
-        brand.Controls.Add(new Label
+
+        var logo = new PictureBox
         {
-            AutoSize = true,
-            Text = LauncherBranding.BrandName,
-            ForeColor = Gold,
-            Font = new Font("Bahnschrift SemiBold", 22f),
-            Margin = new Padding(0),
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom
-        }, 0, 0);
-        brand.Controls.Add(new Label
-        {
-            AutoSize = true,
-            Text = LauncherBranding.BrandTagline,
-            ForeColor = Muted,
-            Font = new Font("Bahnschrift SemiBold", 7.5f),
-            Margin = new Padding(2, 0, 0, 0),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top
-        }, 0, 1);
+            Size = new Size(140, 41),
+            Location = new Point(0, 23),
+            Image = LoadEmbeddedImage(LauncherBranding.LogoResource),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            BackColor = Color.Transparent
+        };
+        logo.MouseDown += DragWindow;
+        brand.Controls.Add(logo);
         brand.MouseDown += DragWindow;
         header.Controls.Add(brand, 0, 0);
 
@@ -146,13 +143,12 @@ internal sealed class MainForm : Form
             Margin = new Padding(0)
         };
         windowTools.Controls.Add(SocialButton("Discord", LauncherBranding.DiscordIconResource, LauncherBranding.DiscordUrl));
+        windowTools.Controls.Add(SocialButton("Facebook", LauncherBranding.FacebookIconResource, LauncherBranding.FacebookUrl));
 
         StyleLanguageButton(_languageButton);
-        _languageButton.Click += (_, _) => _languageMenu.Show(
-            _languageButton,
-            new Point(0, _languageButton.Height));
+        _languageButton.Click += (_, _) => ToggleLanguagePanel();
         windowTools.Controls.Add(_languageButton);
-        ConfigureLanguageMenu();
+        BuildLanguagePanel();
 
         var minimizeButton = WindowButton("_", (_, _) => WindowState = FormWindowState.Minimized);
         var closeButton = WindowButton("X", (_, _) => CloseLauncher());
@@ -321,17 +317,49 @@ internal sealed class MainForm : Form
         ]);
     }
 
-    private void ConfigureLanguageMenu()
+    private void BuildLanguagePanel()
     {
-        _languageMenu.BackColor = Surface;
-        _languageMenu.ForeColor = Cream;
-        _languageMenu.ShowImageMargin = false;
+        _languagePanel.Size = new Size(36, 78);
+        _languagePanel.BackColor = Surface;
+        _languagePanel.Visible = false;
+        _languagePanel.BorderStyle = BorderStyle.None;
+
+        var y = 0;
         foreach (var language in Enum.GetValues<LauncherLanguage>())
         {
-            var item = new ToolStripMenuItem(LauncherLocalization.Code(language));
-            item.Click += (_, _) => ChangeLanguage(language);
-            _languageMenu.Items.Add(item);
+            var flagBox = new PictureBox
+            {
+                Size = new Size(36, 26),
+                Location = new Point(0, y),
+                Image = FlagFor(language),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand
+            };
+            flagBox.MouseDown += (_, _) =>
+            {
+                ChangeLanguage(language);
+                _languagePanel.Hide();
+            };
+            _languagePanel.Controls.Add(flagBox);
+            y += 26;
         }
+
+        Controls.Add(_languagePanel);
+    }
+
+    private void ToggleLanguagePanel()
+    {
+        if (_languagePanel.Visible)
+        {
+            _languagePanel.Hide();
+            return;
+        }
+
+        var screenLocation = _languageButton.PointToScreen(new Point(0, _languageButton.Height));
+        _languagePanel.Location = PointToClient(screenLocation);
+        _languagePanel.BringToFront();
+        _languagePanel.Show();
     }
 
     private void ChangeLanguage(LauncherLanguage language)
@@ -347,7 +375,7 @@ internal sealed class MainForm : Form
     private void ApplyLanguage()
     {
         _versionCaption.Text = Strings.Version;
-        _languageButton.Text = LauncherLocalization.Code(_language);
+        _languageButton.Image = FlagFor(_language);
         _cancelButton.Text = Strings.Cancel;
         _chronicleLabel.Text = string.Format(
             Strings.Chronicle,
@@ -408,14 +436,14 @@ internal sealed class MainForm : Form
 
     private static void StyleLanguageButton(Button button)
     {
-        button.Width = 48;
-        button.Height = 30;
+        button.Width = 36;
+        button.Height = 26;
+        button.Text = "";
+        button.ImageAlign = ContentAlignment.MiddleCenter;
         button.FlatStyle = FlatStyle.Flat;
         button.FlatAppearance.BorderSize = 0;
         button.FlatAppearance.MouseOverBackColor = SurfaceRaised;
         button.BackColor = Surface;
-        button.ForeColor = Cream;
-        button.Font = new Font("Bahnschrift SemiBold", 8.5f);
         button.Margin = new Padding(8, 5, 2, 0);
         button.Cursor = Cursors.Hand;
         button.TabStop = false;
@@ -936,6 +964,39 @@ internal sealed class MainForm : Form
         graphics.DrawImage(source, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
         return bitmap;
     }
+
+    private static Image CreateMenuFlag(Image flag)
+    {
+        const int itemWidth = 36;
+        const int itemHeight = 26;
+        const int maxFlagWidth = 26;
+        const int maxFlagHeight = 18;
+        var composite = new Bitmap(
+            itemWidth,
+            itemHeight,
+            System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        composite.SetResolution(96, 96);
+        using var graphics = Graphics.FromImage(composite);
+        graphics.CompositingMode = CompositingMode.SourceCopy;
+        graphics.Clear(Color.Transparent);
+        var scale = Math.Min(
+            (double)maxFlagWidth / flag.Width,
+            (double)maxFlagHeight / flag.Height);
+        var scaledWidth = (int)(flag.Width * scale);
+        var scaledHeight = (int)(flag.Height * scale);
+        var x = (itemWidth - scaledWidth) / 2;
+        var y = (itemHeight - scaledHeight) / 2;
+        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        graphics.DrawImage(flag, new Rectangle(x, y, scaledWidth, scaledHeight));
+        return composite;
+    }
+
+    private Image FlagFor(LauncherLanguage language) => language switch
+    {
+        LauncherLanguage.English => _gbFlag,
+        LauncherLanguage.Portuguese => _brFlag,
+        _ => _arFlag
+    };
 
     private sealed class SlimProgressBar : Control
     {

@@ -40,11 +40,13 @@ Editar `LauncherBranding.cs`:
 
 Los colores aceptan hexadecimal CSS como `#EBAA39`.
 
-## Wordmark y hero
+## Logo y hero
 
-La marca del header se dibuja con texto desde `LauncherBranding.cs` mediante
-`BrandName` y `BrandTagline`; no depende de logos raster heredados.
+La marca del header se muestra como imagen desde `Assets/l2tribe-logo.png`;
+`LauncherBranding.LogoResource` apunta al recurso embebido. Reemplazá ese
+archivo si querés cambiar el logo.
 
+- `Assets/l2tribe-logo.png`: logo actual mostrado arriba a la izquierda.
 - `Assets/launcher-hero.jpg`: hero actual 1920x1200, mostrado con recorte `cover`.
 
 Conviene mantener el hero entre 1600 y 2560 px de ancho, JPG calidad 85-90, y
