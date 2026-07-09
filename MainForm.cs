@@ -378,10 +378,7 @@ internal sealed class MainForm : Form
         _versionCaption.Text = Strings.Version;
         _languageButton.Image = FlagFor(_language);
         _cancelButton.Text = Strings.Cancel;
-        _chronicleLabel.Text = string.Format(
-            Strings.Chronicle,
-            LauncherBranding.Chronicle,
-            LauncherBranding.Rate);
+        _chronicleLabel.Text = Strings.Chronicle;
         _featuresLabel.Text = Strings.Features;
         _settingsButton.Text = Strings.Options;
         _chooseFolderMenuItem.Text = Strings.ChooseFolder;
@@ -952,6 +949,30 @@ internal sealed class MainForm : Form
 
     private string FormatInstallProgress(InstallProgress progress)
     {
+        if (progress.Kind == InstallProgressKind.ValidatingClientManifest)
+        {
+            return Strings.ValidatingClientManifest;
+        }
+        if (progress.Kind == InstallProgressKind.ClientUpToDate)
+        {
+            return string.Format(Strings.ClientUpToDate, progress.Message);
+        }
+        if (progress.Kind == InstallProgressKind.BackingUpFiles)
+        {
+            return Strings.BackingUpFiles;
+        }
+        if (progress.Kind == InstallProgressKind.InstallingFile)
+        {
+            return string.Format(Strings.InstallingFile, progress.Message);
+        }
+        if (progress.Kind == InstallProgressKind.CheckingFile)
+        {
+            return string.Format(Strings.CheckingFile, progress.Message);
+        }
+        if (progress.Kind == InstallProgressKind.ClientInstalled)
+        {
+            return string.Format(Strings.ClientInstalled, progress.Message);
+        }
         if (progress.Kind != InstallProgressKind.DownloadingClient)
         {
             return progress.Message;

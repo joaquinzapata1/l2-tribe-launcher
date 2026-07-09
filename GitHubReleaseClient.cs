@@ -9,6 +9,12 @@ internal sealed class GitHubReleaseClient : IDisposable
         "https://api.github.com/repos/joaquinzapata1/l2-tribe-launcher/releases/latest";
 
     private readonly HttpClient _httpClient = new();
+    private static readonly TimeSpan[] RetryDelays =
+    [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5)
+    ];
 
     public GitHubReleaseClient()
     {
@@ -20,7 +26,7 @@ internal sealed class GitHubReleaseClient : IDisposable
 
     public async Task<ReleaseInfo> GetLatestAsync(CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(LatestReleaseApi, cancellationToken);
+        using var response = await GetWithRetryAsync(LatestReleaseApi, cancellationToken);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             throw new InvalidOperationException("No client patch release has been published yet.");
@@ -65,7 +71,7 @@ internal sealed class GitHubReleaseClient : IDisposable
     {
         const string releasesUrl =
             "https://api.github.com/repos/joaquinzapata1/l2-tribe-launcher/releases?per_page=30";
-        using var response = await _httpClient.GetAsync(releasesUrl, cancellationToken);
+        using var response = await GetWithRetryAsync(releasesUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -110,7 +116,7 @@ internal sealed class GitHubReleaseClient : IDisposable
 
     public async Task<string> DownloadChecksumAsync(string url, CancellationToken cancellationToken)
     {
-        var content = await _httpClient.GetStringAsync(url, cancellationToken);
+        var content = await GetStringWithRetryAsync(url, cancellationToken);
         var hash = content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
         if (hash.Length != 64 || !hash.All(Uri.IsHexDigit))
         {
@@ -125,34 +131,121 @@ internal sealed class GitHubReleaseClient : IDisposable
         Action<int>? reportPercent,
         CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(
-            url,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
-        var total = response.Content.Headers.ContentLength;
-
-        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var target = new FileStream(
-            destination,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            1024 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-        var buffer = new byte[1024 * 1024];
-        long downloaded = 0;
-        int read;
-        while ((read = await source.ReadAsync(buffer.AsMemory(), cancellationToken)) > 0)
+        await WithRetryAsync(async () =>
         {
-            await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            downloaded += read;
-            if (total is > 0)
+            TryDeleteFile(destination);
+            using var response = await _httpClient.GetAsync(
+                url,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var total = response.Content.Headers.ContentLength;
+
+            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+            await using var target = new FileStream(
+                destination,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                1024 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var buffer = new byte[1024 * 1024];
+            long downloaded = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer.AsMemory(), cancellationToken)) > 0)
             {
-                reportPercent?.Invoke((int)Math.Min(100, downloaded * 100 / total.Value));
+                await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                downloaded += read;
+                if (total is > 0)
+                {
+                    reportPercent?.Invoke((int)Math.Min(100, downloaded * 100 / total.Value));
+                }
+            }
+        }, cancellationToken);
+    }
+
+    public void Dispose() => _httpClient.Dispose();
+
+    private async Task<HttpResponseMessage> GetWithRetryAsync(string url, CancellationToken cancellationToken)
+    {
+        return await WithRetryAsync(async () =>
+        {
+            var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (IsTransient(response.StatusCode))
+            {
+                var statusCode = (int)response.StatusCode;
+                response.Dispose();
+                throw new HttpRequestException(
+                    $"Transient HTTP error {statusCode} while requesting {url}.");
+            }
+            return response;
+        }, cancellationToken);
+    }
+
+    private async Task<string> GetStringWithRetryAsync(string url, CancellationToken cancellationToken)
+    {
+        return await WithRetryAsync(async () =>
+        {
+            using var response = await GetWithRetryAsync(url, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(cancellationToken);
+        }, cancellationToken);
+    }
+
+    private static async Task<T> WithRetryAsync<T>(
+        Func<Task<T>> action,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception error) when (ShouldRetry(error, attempt, cancellationToken))
+            {
+                await Task.Delay(RetryDelays[attempt], cancellationToken);
             }
         }
     }
 
-    public void Dispose() => _httpClient.Dispose();
+    private static async Task WithRetryAsync(
+        Func<Task> action,
+        CancellationToken cancellationToken)
+    {
+        await WithRetryAsync(async () =>
+        {
+            await action();
+            return true;
+        }, cancellationToken);
+    }
+
+    private static bool ShouldRetry(Exception error, int attempt, CancellationToken cancellationToken)
+    {
+        return !cancellationToken.IsCancellationRequested &&
+               attempt < RetryDelays.Length &&
+               error is HttpRequestException or IOException or TaskCanceledException;
+    }
+
+    private static bool IsTransient(System.Net.HttpStatusCode statusCode)
+    {
+        var code = (int)statusCode;
+        return statusCode is System.Net.HttpStatusCode.RequestTimeout or
+               System.Net.HttpStatusCode.TooManyRequests ||
+               code >= 500;
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+        }
+    }
 }

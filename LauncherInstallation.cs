@@ -32,12 +32,11 @@ internal static class LauncherInstallation
         shortcutDirectory ??= Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         Directory.CreateDirectory(shortcutDirectory);
         var shortcutPath = Path.Combine(shortcutDirectory, ShortcutFileName);
-        var gamePath = Path.Combine(clientRoot, "system-e", "l2.exe");
         CreateShortcut(
             shortcutPath,
             launcherPath,
             clientRoot,
-            File.Exists(gamePath) ? gamePath : launcherPath);
+            launcherPath);
 
         return new LauncherInstallResult(launcherPath, shortcutPath);
     }

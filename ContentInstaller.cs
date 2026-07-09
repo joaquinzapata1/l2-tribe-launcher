@@ -40,7 +40,10 @@ internal sealed class ContentInstaller : IDisposable
         EnsureDirectoryIsWritable(clientDirectory);
         CleanupStaleInstallArtifacts(clientDirectory);
 
-        report?.Invoke(new InstallProgress(1, "Validating client manifest..."));
+        report?.Invoke(new InstallProgress(
+            1,
+            "",
+            Kind: InstallProgressKind.ValidatingClientManifest));
         var manifestHash = await HashFileAsync(manifestPath, cancellationToken);
         if (!string.IsNullOrWhiteSpace(expectedManifestSha256) &&
             !manifestHash.Equals(NormalizeSha256(expectedManifestSha256), StringComparison.OrdinalIgnoreCase))
@@ -74,7 +77,10 @@ internal sealed class ContentInstaller : IDisposable
         if (requiredFiles.Count == 0 && deletePaths.Count == 0)
         {
             await WriteInstalledManifestAsync(previousManifestPath, manifestJson, cancellationToken);
-            report?.Invoke(new InstallProgress(100, $"Client {manifest.ClientVersion} is up to date."));
+            report?.Invoke(new InstallProgress(
+                100,
+                manifest.ClientVersion,
+                Kind: InstallProgressKind.ClientUpToDate));
             return new ContentInstallResult(manifest.ClientVersion, 0, 0, 0, null);
         }
 
@@ -103,7 +109,10 @@ internal sealed class ContentInstaller : IDisposable
                 report,
                 cancellationToken);
 
-            report?.Invoke(new InstallProgress(56, "Backing up files that will change..."));
+            report?.Invoke(new InstallProgress(
+                56,
+                "",
+                Kind: InstallProgressKind.BackingUpFiles));
             foreach (var relativePath in affectedPaths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -153,7 +162,10 @@ internal sealed class ContentInstaller : IDisposable
                     File.Move(temporaryTarget, target, true);
                     installedFiles++;
                     var percent = 58 + (int)Math.Min(37, installedFiles * 37L / requiredFiles.Count);
-                    report?.Invoke(new InstallProgress(percent, $"Installing {file.Path}"));
+                    report?.Invoke(new InstallProgress(
+                        percent,
+                        file.Path,
+                        Kind: InstallProgressKind.InstallingFile));
                 }
 
                 TryDeleteDirectory(packageStage);
@@ -179,7 +191,10 @@ internal sealed class ContentInstaller : IDisposable
             await WriteInstalledManifestAsync(previousManifestPath, manifestJson, cancellationToken);
             TryDeleteDirectory(backupDirectory);
             TryDeleteDirectory(cacheDirectory);
-            report?.Invoke(new InstallProgress(100, $"Client {manifest.ClientVersion} installed."));
+            report?.Invoke(new InstallProgress(
+                100,
+                manifest.ClientVersion,
+                Kind: InstallProgressKind.ClientInstalled));
             return new ContentInstallResult(
                 manifest.ClientVersion,
                 installedFiles,
@@ -340,7 +355,10 @@ internal sealed class ContentInstaller : IDisposable
                 required.Add(file);
             }
             var percent = 2 + (int)Math.Min(8, (index + 1) * 8L / manifest.Files.Count);
-            report?.Invoke(new InstallProgress(percent, $"Checking {file.Path}"));
+            report?.Invoke(new InstallProgress(
+                percent,
+                file.Path,
+                Kind: InstallProgressKind.CheckingFile));
         }
         return required;
     }

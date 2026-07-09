@@ -4,8 +4,8 @@ namespace L2TribeLauncher;
 internal static class LauncherBranding
 {
     public const string WindowTitle = "L2 Tribe";
-    public const string Chronicle = "INTERLUDE";
-    public const string Rate = "x30";
+    public const string Chronicle = "MODERN INTERLUDE";
+    public const string Rate = "x15";
 
     public const string HeroResource = "L2TribeLauncher.Assets.launcher-hero.jpg";
     public const string LogoResource = "L2TribeLauncher.Assets.l2tribe-logo.png";

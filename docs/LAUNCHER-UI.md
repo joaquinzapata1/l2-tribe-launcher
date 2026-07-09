@@ -8,7 +8,8 @@ que puedas iterar sin tocar descargas, checksums o instalacion.
 
 Hacer doble clic en `Live Preview Launcher.cmd`. Mientras esa consola siga
 abierta, cada guardado en los archivos `.cs`, el proyecto o `Assets/` recompila
-y reinicia automaticamente la ventana de preview.
+y reinicia automaticamente la ventana de preview. Este modo usa `dotnet run`
+para evitar que Windows Smart App Control bloquee un `.exe` nuevo en cada cambio.
 
 WinForms no puede reacomodar de forma segura todos los controles existentes en
 memoria. Por eso el refresh reinicia solamente la ventana, normalmente en pocos
@@ -20,10 +21,14 @@ Hacer doble clic en `Preview Launcher.cmd`. El script compila y abre la ventana;
 si falla, deja el error visible. Desde terminal tambien podes ejecutar:
 
 ```powershell
-.\preview.ps1
+.\dev-preview.ps1
 ```
 
 Cada vez que cambies algo, cerra el preview y volve a abrirlo.
+
+`preview.ps1` sigue existiendo para probar el `.exe` single-file publicado en
+`%LOCALAPPDATA%`, pero para iterar UI conviene usar `dev-preview.ps1` o
+`Live Preview Launcher.cmd`.
 
 ## Colores, textos y redes
 

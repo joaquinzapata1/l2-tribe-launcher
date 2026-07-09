@@ -54,7 +54,13 @@ internal sealed class UpdaterSettings
 internal enum InstallProgressKind
 {
     Message,
-    DownloadingClient
+    ValidatingClientManifest,
+    ClientUpToDate,
+    BackingUpFiles,
+    InstallingFile,
+    CheckingFile,
+    DownloadingClient,
+    ClientInstalled
 }
 
 internal sealed record InstallProgress(
