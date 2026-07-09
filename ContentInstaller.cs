@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -8,10 +9,15 @@ namespace L2TribeLauncher;
 
 internal sealed class ContentInstaller : IDisposable
 {
+    private const int MaxConcurrentDownloads = 2;
+    private const int ProgressReportMilliseconds = 250;
+    private static readonly TimeSpan NetworkTimeout = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan ReadIdleTimeout = TimeSpan.FromMinutes(3);
     private readonly HttpClient _httpClient = new();
 
     public ContentInstaller()
     {
+        _httpClient.Timeout = NetworkTimeout;
         _httpClient.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("L2TribeLauncher", "0.1"));
     }
@@ -32,6 +38,7 @@ internal sealed class ContentInstaller : IDisposable
         }
         Directory.CreateDirectory(clientDirectory);
         EnsureDirectoryIsWritable(clientDirectory);
+        CleanupStaleInstallArtifacts(clientDirectory);
 
         report?.Invoke(new InstallProgress(1, "Validating client manifest..."));
         var manifestHash = await HashFileAsync(manifestPath, cancellationToken);
@@ -170,10 +177,7 @@ internal sealed class ContentInstaller : IDisposable
             }
 
             await WriteInstalledManifestAsync(previousManifestPath, manifestJson, cancellationToken);
-            if (originalItems.Count == 0)
-            {
-                TryDeleteDirectory(backupDirectory);
-            }
+            TryDeleteDirectory(backupDirectory);
             TryDeleteDirectory(cacheDirectory);
             report?.Invoke(new InstallProgress(100, $"Client {manifest.ClientVersion} installed."));
             return new ContentInstallResult(
@@ -181,7 +185,7 @@ internal sealed class ContentInstaller : IDisposable
                 installedFiles,
                 deleted,
                 requiredPackages.Count,
-                originalItems.Count > 0 ? backupDirectory : null);
+                null);
         }
         catch (Exception installError) when (applyStarted)
         {
@@ -368,11 +372,15 @@ internal sealed class ContentInstaller : IDisposable
 
         var totalBytes = Math.Max(1, packages.Sum(package => package.Size));
         long completedBytes = 0;
-        using var semaphore = new SemaphoreSlim(4);
+        using var semaphore = new SemaphoreSlim(MaxConcurrentDownloads);
+        using var downloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var errors = new ConcurrentQueue<Exception>();
+        var reportGate = new object();
+        var lastReportedPercent = -1;
+        var lastReportTicks = 0L;
         var tasks = packages.Select(async package =>
         {
-            await semaphore.WaitAsync(cancellationToken);
+            await semaphore.WaitAsync(downloadCancellation.Token);
             try
             {
                 var destination = Path.Combine(cacheDirectory, package.FileName);
@@ -383,13 +391,17 @@ internal sealed class ContentInstaller : IDisposable
                     {
                         var completed = Interlocked.Add(ref completedBytes, delta);
                         var percent = 10 + (int)Math.Min(45, completed * 45 / totalBytes);
-                        report?.Invoke(new InstallProgress(percent, $"Downloading {package.FileName}"));
+                        ReportDownloadProgress(percent, completed);
                     },
-                    cancellationToken);
+                    downloadCancellation.Token);
             }
             catch (Exception error)
             {
                 errors.Enqueue(error);
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    await downloadCancellation.CancelAsync();
+                }
             }
             finally
             {
@@ -401,6 +413,43 @@ internal sealed class ContentInstaller : IDisposable
         if (errors.TryDequeue(out var firstError))
         {
             throw firstError;
+        }
+
+        ReportDownloadProgress(55, totalBytes, force: true);
+
+        void ReportDownloadProgress(int percent, long completed, bool force = false)
+        {
+            if (report is null)
+            {
+                return;
+            }
+
+            var now = Stopwatch.GetTimestamp();
+            var elapsedMilliseconds = lastReportTicks == 0
+                ? ProgressReportMilliseconds
+                : (now - lastReportTicks) * 1000 / Stopwatch.Frequency;
+            lock (reportGate)
+            {
+                if (!force && percent == lastReportedPercent)
+                {
+                    return;
+                }
+                if (!force && elapsedMilliseconds < ProgressReportMilliseconds)
+                {
+                    return;
+                }
+                lastReportedPercent = percent;
+                lastReportTicks = now;
+            }
+
+            var safeCompleted = Math.Min(completed, totalBytes);
+            report(new InstallProgress(
+                percent,
+                "Downloading client...",
+                force,
+                InstallProgressKind.DownloadingClient,
+                safeCompleted,
+                totalBytes));
         }
     }
 
@@ -467,10 +516,28 @@ internal sealed class ContentInstaller : IDisposable
             FileOptions.Asynchronous | FileOptions.SequentialScan);
         var buffer = new byte[1024 * 1024];
         int read;
-        while ((read = await source.ReadAsync(buffer.AsMemory(), cancellationToken)) > 0)
+        while ((read = await ReadWithIdleTimeoutAsync(source, buffer.AsMemory(), cancellationToken)) > 0)
         {
             await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
             reportBytes(read);
+        }
+    }
+
+    private static async Task<int> ReadWithIdleTimeoutAsync(
+        Stream source,
+        Memory<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        using var idleCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        idleCancellation.CancelAfter(ReadIdleTimeout);
+        try
+        {
+            return await source.ReadAsync(buffer, idleCancellation.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new IOException(
+                $"Download stalled for more than {ReadIdleTimeout.TotalMinutes:0} minutes.");
         }
     }
 
@@ -546,6 +613,17 @@ internal sealed class ContentInstaller : IDisposable
         finally
         {
             TryDeleteFile(probe);
+        }
+    }
+
+    private static void CleanupStaleInstallArtifacts(string clientDirectory)
+    {
+        foreach (var pattern in new[] { ".l2-content-staging-*", "_client_backup_*", ".l2-package-cache" })
+        {
+            foreach (var directory in Directory.EnumerateDirectories(clientDirectory, pattern, SearchOption.TopDirectoryOnly))
+            {
+                TryDeleteDirectory(directory);
+            }
         }
     }
 

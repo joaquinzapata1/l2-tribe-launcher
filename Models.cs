@@ -51,7 +51,19 @@ internal sealed class UpdaterSettings
     public string Language { get; set; } = "ES";
 }
 
-internal sealed record InstallProgress(int Percent, string Message);
+internal enum InstallProgressKind
+{
+    Message,
+    DownloadingClient
+}
+
+internal sealed record InstallProgress(
+    int Percent,
+    string Message,
+    bool Force = false,
+    InstallProgressKind Kind = InstallProgressKind.Message,
+    long CompletedBytes = 0,
+    long TotalBytes = 0);
 
 internal sealed record InstallResult(
     string PatchVersion,

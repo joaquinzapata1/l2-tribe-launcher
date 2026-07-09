@@ -144,6 +144,7 @@ internal sealed class MainForm : Form
         };
         windowTools.Controls.Add(SocialButton("Discord", LauncherBranding.DiscordIconResource, LauncherBranding.DiscordUrl));
         windowTools.Controls.Add(SocialButton("Facebook", LauncherBranding.FacebookIconResource, LauncherBranding.FacebookUrl));
+        windowTools.Controls.Add(SocialButton("Instagram", LauncherBranding.InstagramIconResource, LauncherBranding.InstagramUrl));
 
         StyleLanguageButton(_languageButton);
         _languageButton.Click += (_, _) => ToggleLanguagePanel();
@@ -737,7 +738,7 @@ internal sealed class MainForm : Form
                 progress => BeginInvoke(() =>
                 {
                     _progress.Value = Math.Clamp(progress.Percent, 0, 100);
-                    _status.Text = progress.Message;
+                    _status.Text = FormatInstallProgress(progress);
                 }),
                 cancellationToken),
             cancellationToken);
@@ -947,6 +948,29 @@ internal sealed class MainForm : Form
             Strings.GenericErrorTitle,
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
+    }
+
+    private string FormatInstallProgress(InstallProgress progress)
+    {
+        if (progress.Kind != InstallProgressKind.DownloadingClient)
+        {
+            return progress.Message;
+        }
+
+        return string.Format(
+            Strings.DownloadingClient,
+            progress.Percent,
+            FormatBytes(progress.CompletedBytes),
+            FormatBytes(progress.TotalBytes));
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1024L * 1024 * 1024)
+        {
+            return $"{bytes / 1024d / 1024d / 1024d:0.00} GB";
+        }
+        return $"{bytes / 1024d / 1024d:0.0} MB";
     }
 
     private static Image LoadEmbeddedImage(string resourceName)

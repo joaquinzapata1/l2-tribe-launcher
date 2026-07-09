@@ -5,35 +5,46 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
-$project = Join-Path $repoRoot 'L2TribeLauncher.csproj'
-$dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
-$dotnet = if ($dotnetCommand) {
-    $dotnetCommand.Source
-}
-else {
-    @(
-        (Join-Path $repoRoot '..\l2-tribe-server\build\tooling\dotnet\dotnet.exe'),
-        (Join-Path $repoRoot '..\l2classic-interlude-custom\build\tooling\dotnet\dotnet.exe')
-    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-}
-if (-not (Test-Path -LiteralPath $dotnet -PathType Leaf)) {
-    throw 'No se encontro .NET 8 SDK. Instala dotnet 8 o clona l2-tribe-server como repo hermano.'
-}
+$buildScript = Join-Path $repoRoot 'build.ps1'
+$previewOutputDir = Join-Path $repoRoot 'build\preview-win-x64'
+$publishedExecutable = Join-Path $previewOutputDir 'L2TribeLauncher.exe'
+$trustedPreviewDir = Join-Path $env:LOCALAPPDATA 'L2TribeLauncher\preview'
+$executable = Join-Path $trustedPreviewDir 'L2TribeLauncher.exe'
 
-Write-Host 'Compilando preview del launcher...' -ForegroundColor Cyan
-& $dotnet build $project --configuration Debug
-if ($LASTEXITCODE -ne 0) {
-    throw "El preview no compilo (codigo $LASTEXITCODE)"
+Write-Host 'Publicando preview single-file del launcher...' -ForegroundColor Cyan
+& $buildScript -OutputDir $previewOutputDir
+New-Item -ItemType Directory -Path $trustedPreviewDir -Force | Out-Null
+$existingPreviewProcesses = @(
+    Get-CimInstance Win32_Process -Filter "Name='L2TribeLauncher.exe'" |
+        Where-Object { $_.ExecutablePath -eq $executable }
+)
+foreach ($process in $existingPreviewProcesses) {
+    Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+}
+foreach ($process in $existingPreviewProcesses) {
+    Wait-Process -Id $process.ProcessId -Timeout 5 -ErrorAction SilentlyContinue
+}
+for ($attempt = 1; $attempt -le 20; $attempt++) {
+    try {
+        Copy-Item -LiteralPath $publishedExecutable -Destination $executable -Force
+        break
+    }
+    catch {
+        if ($attempt -eq 20) {
+            throw
+        }
+        Start-Sleep -Milliseconds 250
+    }
 }
 
 if (-not $NoLaunch) {
-    $assembly = Join-Path $repoRoot 'bin\Debug\net8.0-windows\win-x64\L2TribeLauncher.dll'
-    if (-not (Test-Path -LiteralPath $assembly -PathType Leaf)) {
-        throw "No se encontro el preview compilado: $assembly"
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+        throw "No se encontro el preview compilado: $executable"
     }
     Write-Host 'Abriendo L2 Tribe Launcher...' -ForegroundColor Green
-    # Smart App Control can block unsigned local apphosts; the trusted SDK host
-    # runs the exact same preview assembly without weakening Windows security.
-    $process = Start-Process -FilePath $dotnet -ArgumentList @("`"$assembly`"") -WorkingDirectory $repoRoot -PassThru
+    # The single-file publish avoids loading L2TribeLauncher.dll, which can be
+    # blocked by Windows Application Control on some machines. Running the
+    # preview copy from LocalAppData also avoids repo/build path reputation hits.
+    $process = Start-Process -FilePath $executable -WorkingDirectory $trustedPreviewDir -PassThru
     $process.WaitForExit()
 }

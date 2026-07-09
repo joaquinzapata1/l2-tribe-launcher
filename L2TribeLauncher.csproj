@@ -29,6 +29,7 @@
     <EmbeddedResource Include="Assets\flags\gb.png" />
     <EmbeddedResource Include="Assets\social\discord.png" />
     <EmbeddedResource Include="Assets\social\facebook.png" />
+    <EmbeddedResource Include="Assets\social\instagram.png" />
     <EmbeddedResource Include="Assets\favicon.ico" />
   </ItemGroup>
 </Project>

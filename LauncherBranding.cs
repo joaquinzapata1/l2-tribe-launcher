@@ -11,6 +11,7 @@ internal static class LauncherBranding
     public const string LogoResource = "L2TribeLauncher.Assets.l2tribe-logo.png";
     public const string DiscordIconResource = "L2TribeLauncher.Assets.social.discord.png";
     public const string FacebookIconResource = "L2TribeLauncher.Assets.social.facebook.png";
+    public const string InstagramIconResource = "L2TribeLauncher.Assets.social.instagram.png";
 
     public const string ArFlagResource = "L2TribeLauncher.Assets.flags.ar.png";
     public const string BrFlagResource = "L2TribeLauncher.Assets.flags.br.png";
@@ -19,6 +20,7 @@ internal static class LauncherBranding
     public const string DiscordServerId = "1514807146695495690";
     public const string DiscordUrl = "https://discord.gg/tNsg9uYwnH";
     public const string FacebookUrl = "https://www.facebook.com/l2tribe";
+    public const string InstagramUrl = "https://www.instagram.com/l2tribe.il/";
 
     public static readonly Color Canvas = FromHex("#1D2026");
     public static readonly Color Surface = FromHex("#252930");

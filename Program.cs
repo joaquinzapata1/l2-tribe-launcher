@@ -18,9 +18,46 @@ internal static class Program
             return RunCommandLineAsync(args).GetAwaiter().GetResult();
         }
 
-        ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm());
-        return 0;
+        try
+        {
+            ApplicationConfiguration.Initialize();
+            Application.Run(new MainForm());
+            return 0;
+        }
+        catch (Exception error)
+        {
+            LogFatalStartupError(error);
+            MessageBox.Show(
+                $"The launcher could not start.\n\n{error.Message}\n\nA diagnostic log was written to:\n{FatalStartupLogPath()}",
+                "L2 Tribe Launcher",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return 1;
+        }
+    }
+
+    private static void LogFatalStartupError(Exception error)
+    {
+        try
+        {
+            var logPath = FatalStartupLogPath();
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            File.AppendAllText(
+                logPath,
+                $"{DateTimeOffset.Now:o} {error}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch
+        {
+            // If diagnostics cannot be written, still show the startup error.
+        }
+    }
+
+    private static string FatalStartupLogPath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "L2TribeLauncher",
+            "startup-errors.log");
     }
 
     private static int InstallLauncher(string[] args)
