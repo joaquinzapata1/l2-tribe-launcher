@@ -566,23 +566,26 @@ internal sealed class MainForm : Form
         try
         {
             _language = LauncherLocalization.Parse(settings.Language);
-            if (!string.IsNullOrWhiteSpace(settings.ClientDirectory))
-            {
-                _clientPath.Text = settings.ClientDirectory;
-            }
-            else
-            {
-                var executableDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
-                _clientPath.Text = File.Exists(Path.Combine(executableDirectory, "system-e", "l2.exe"))
-                    ? executableDirectory
-                    : string.Empty;
-            }
+            _clientPath.Text = ResolveInitialClientDirectory(settings);
             ApplyLanguage();
         }
         finally
         {
             _loadingSettings = false;
         }
+    }
+
+    private static string ResolveInitialClientDirectory(UpdaterSettings settings)
+    {
+        var executableDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+        if (File.Exists(Path.Combine(executableDirectory, "system-e", "l2.exe")))
+        {
+            return executableDirectory;
+        }
+
+        return !string.IsNullOrWhiteSpace(settings.ClientDirectory)
+            ? settings.ClientDirectory
+            : string.Empty;
     }
 
     private void SaveSettings() => SettingsStore.Save(new UpdaterSettings
@@ -859,6 +862,10 @@ internal sealed class MainForm : Form
             UseShellExecute = true
         });
         StartDiscordPresence(game, Path.GetDirectoryName(executable)!);
+        if (game is not null)
+        {
+            Close();
+        }
     }
 
     private string? EnsureLauncherEntryPoint()
