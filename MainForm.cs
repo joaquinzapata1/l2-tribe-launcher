@@ -577,8 +577,14 @@ internal sealed class MainForm : Form
 
     private static string ResolveInitialClientDirectory(UpdaterSettings settings)
     {
+        var processDirectory = GetProcessDirectory();
+        if (IsClientRoot(processDirectory))
+        {
+            return processDirectory;
+        }
+
         var executableDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
-        if (File.Exists(Path.Combine(executableDirectory, "system-e", "l2.exe")))
+        if (IsClientRoot(executableDirectory))
         {
             return executableDirectory;
         }
@@ -587,6 +593,18 @@ internal sealed class MainForm : Form
             ? settings.ClientDirectory
             : string.Empty;
     }
+
+    private static string GetProcessDirectory()
+    {
+        var processPath = Environment.ProcessPath;
+        return string.IsNullOrWhiteSpace(processPath)
+            ? string.Empty
+            : Path.GetDirectoryName(Path.GetFullPath(processPath)) ?? string.Empty;
+    }
+
+    private static bool IsClientRoot(string directory) =>
+        !string.IsNullOrWhiteSpace(directory) &&
+        File.Exists(Path.Combine(directory, "system-e", "l2.exe"));
 
     private void SaveSettings() => SettingsStore.Save(new UpdaterSettings
     {

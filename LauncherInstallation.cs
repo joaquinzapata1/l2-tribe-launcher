@@ -10,6 +10,7 @@ internal sealed record LauncherInstallResult(string LauncherPath, string Shortcu
 internal static class LauncherInstallation
 {
     public const string InstalledFileName = "L2 Tribe Launcher.exe";
+    public const string PublishedFileName = "L2TribeLauncher.exe";
     public const string ShortcutFileName = "L2 Tribe.lnk";
 
     public static LauncherInstallResult EnsureInstalled(
@@ -29,6 +30,8 @@ internal static class LauncherInstallation
             File.Move(temporaryPath, launcherPath, overwrite: true);
         }
 
+        CleanupPublishedCopy(clientRoot, sourcePath, launcherPath);
+
         shortcutDirectory ??= Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         Directory.CreateDirectory(shortcutDirectory);
         var shortcutPath = Path.Combine(shortcutDirectory, ShortcutFileName);
@@ -39,6 +42,29 @@ internal static class LauncherInstallation
             launcherPath);
 
         return new LauncherInstallResult(launcherPath, shortcutPath);
+    }
+
+    private static void CleanupPublishedCopy(string clientRoot, string sourcePath, string launcherPath)
+    {
+        var publishedPath = Path.Combine(clientRoot, PublishedFileName);
+        if (!File.Exists(publishedPath) || PathsEqual(publishedPath, launcherPath) || PathsEqual(publishedPath, sourcePath))
+        {
+            return;
+        }
+
+        if (!FilesMatch(publishedPath, launcherPath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(publishedPath);
+        }
+        catch
+        {
+            // Best-effort cleanup only.
+        }
     }
 
     private static bool FilesMatch(string sourcePath, string destinationPath)
